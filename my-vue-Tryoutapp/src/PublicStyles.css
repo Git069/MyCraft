@@ -1,0 +1,36 @@
+/* Buttons */
+button {
+    padding: 10px 16px;
+    border-radius: 6px;
+    border: none;
+    background: #4f77a5;
+    color: white;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background 0.2s;
+  }
+  
+  button:hover {
+    background: #357ab8;
+  }
+  
+  /* Eingabefelder */
+  input, textarea {
+    padding: 8px 12px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1rem;
+  }
+  
+  /* Überschriften */
+  h1, h2, h3, h4 {
+    font-family: sans-serif;
+    font-weight: 600;
+  }
+  
+  /* Standardtext */
+  body {
+    font-family: Arial, sans-serif;
+    line-height: 1.6;
+  }
+  

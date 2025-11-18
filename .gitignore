@@ -1,0 +1,59 @@
+# ----------------------------------------
+# 1. GENERELLE LOGS & CACHE
+# ----------------------------------------
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+.eslintcache
+
+# ----------------------------------------
+# 2. VUE/VITE FRONTEND (my-vue-Tryoutapp)
+# Die Pfade MÜSSEN den Unterordnernamen enthalten
+# ----------------------------------------
+/my-vue-Tryoutapp/node_modules/  # JS-Abhängigkeiten
+/my-vue-Tryoutapp/dist/          # Vite Build-Ausgabe
+/my-vue-Tryoutapp/dist-ssr/      # SSR-Build-Ausgabe
+/my-vue-Tryoutapp/coverage/      # Test-Coverage-Berichte
+/my-vue-Tryoutapp/*.local        # Lokale Umgebungsvariablen-Dateien
+
+# Frontend spezifische Caches/Metadaten
+/my-vue-Tryoutapp/tsconfig.tsbuildinfo 
+/my-vue-Tryoutapp/__screenshots__/ # Vitest Screenshots
+
+# Cypress Dateien
+/my-vue-Tryoutapp/cypress/videos/
+/my-vue-Tryoutapp/cypress/screenshots/
+
+# ----------------------------------------
+# 3. DJANGO BACKEND & PYTHON (HINZUGEFÜGT)
+# ----------------------------------------
+# Virtuelle Umgebung
+venv_django/
+.venv/
+ 
+# Lokale Datenbank
+db.sqlite3
+
+# Python Bytecode
+__pycache__/
+*.pyc
+
+# ----------------------------------------
+# 4. IDEs & BETRIEBSSYSTEM (OS)
+# ----------------------------------------
+.DS_Store       # macOS Dateien
+.idea           # JetBrains (PyCharm) Konfigurationsordner
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# VS Code (Nur den Hauptordner ignorieren, wenn nicht streng synchronisiert)
+.vscode/
+# Ausnahme: extensions.json ist oft nützlich für Team-Empfehlungen
+!.vscode/extensions.json
