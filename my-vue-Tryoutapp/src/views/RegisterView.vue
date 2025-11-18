@@ -3,6 +3,16 @@
       <h2>Registrieren</h2>
     
     <form @submit.prevent="registerUser">
+
+      <div class="form-group">
+        <label for="name">Name</label>
+        <input type="text" id="name" v-model="name" required>
+      </div>
+
+      <div class="form-group">
+        <label for="name">Nachname</label>
+        <input type="text" id="lastname" v-model="lastname" required>
+      </div>
       
       <div class="form-group">
         <label for="email">E-Mail</label>
@@ -22,7 +32,7 @@
         {{ success }}
       </div>
 
-      <button type="submit" :disabled="isLoading">
+      <button type="submit" :disabled="isLoading" class="base-button">
         {{ isLoading ? 'Registriere...' : 'Registrierung abschließen' }}
       </button>
     </form>
@@ -98,8 +108,9 @@
   
   <style scoped>
   /* Hier könnten Sie einfaches CSS für .form-group, .error-message, etc. definieren */
+  
   .error-message { color: red; margin-top: 10px; }
   .success-message { color: green; margin-top: 10px; }
-  .form-group { margin-bottom: 15px; }
+  /*.form-group { margin-bottom: 15px; }*/
   input { width: 100%; padding: 8px; box-sizing: border-box; }
   </style>

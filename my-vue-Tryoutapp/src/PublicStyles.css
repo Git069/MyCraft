@@ -1,36 +1,352 @@
-/* Buttons */
-button {
-    padding: 10px 16px;
-    border-radius: 6px;
-    border: none;
-    background: #4f77a5;
-    color: white;
-    cursor: pointer;
-    font-size: 1rem;
-    transition: background 0.2s;
+/* ============================================
+   PUBLIC STYLES (GLOBALE STILE)
+============================================
+   Diese Datei definiert die visuellen Grundlagen 
+   der gesamten Vue.js-Anwendung.
+Inhalt:
+1. CSS Reset & Box-Sizing
+2. CSS Custom Properties (Design-Token)
+3. Globale Basis-Stile (Body, Links etc.)
+4. Basis-Typografie (Schriftarten, Überschriften)
+5. Gängige Utility-Klassen (z.B. Container)
+============================================
+*/
+ 
+/* --------------------------------------------
+   1. CSS RESET & BOX-SIZING
+--------------------------------------------
+   Ziel: Browser-Inkonsistenzen beseitigen. 
+   Jeder Browser hat eigene Standard-Margins, 
+   Paddings etc. Wir setzen sie auf Null, 
+   um bei Null anzufangen.
+*/
+ 
+*,
+*::before,
+*::after {
+  /* * Setzt das Box-Modell auf 'border-box'. 
+   * Das bedeutet: Wenn du einem Element eine Breite von 100px gibst, 
+   * sind Padding und Border in diesen 100px *inbegriffen*, 
+   * anstatt hinzugefügt zu werden. Das macht Layouts intuitiver.
+   */
+  box-sizing: border-box;
+  /* Setzt alle Ränder und Innenabstände standardmäßig auf 0 */
+  margin: 0;
+  padding: 0;
+  /* Aktiviert Anti-Aliasing für Schriften (weichere Kanten) */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+ 
+/* * Sorgt dafür, dass Medieninhalte (Bilder, Videos) 
+* responsive sind und nicht über ihren Container hinausfließen.
+*/
+img,
+picture,
+video,
+canvas,
+svg {
+  display: block; /* Entfernt Leerraum unter Bildern (inline-Problem) */
+  max-width: 100%; /* Verhindert horizontales Überlaufen */
+}
+ 
+/* * Formular-Elemente erben standardmäßig *nicht* * die Schriftart vom 'body'. 
+* Dieser Block erzwingt, dass sie dieselbe Schriftart 
+* und Schriftgröße wie der Rest der Seite verwenden.
+*/
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+ 
+/* --------------------------------------------
+   2. CSS CUSTOM PROPERTIES (DESIGN-TOKEN)
+--------------------------------------------
+   Definiert im :root (entspricht dem <html>-Tag).
+   Das sind deine globalen Variablen für das Design.
+   Wenn du eine Farbe ändern musst (z.B. Branding-Änderung),
+   musst du sie nur hier an einer Stelle ändern.
+*/
+ 
+:root {
+  /* === FARBPALETTE === */
+  /* Haupt-Branding-Farben */
+  --color-primary: #4D6BDD;        /* Haupt-Aktionsfarbe (Buttons, Links) */
+  --color-primary-dark: #3a5cc9;   /* Für Hover-Effekte auf Primary */
+  --color-secondary: #ff8b00;      /* Sekundäre Akzentfarbe */
+  --color-accent: #4caf50;         /* Für spezielle Hervorhebungen */
+ 
+  /* Textfarben */
+  --color-text: #222222;           /* Standard-Textfarbe (guter Kontrast) */
+  --color-text-light: #555555;     /* Für untergeordneten Text (z.B. Meta-Infos) */
+  --color-text-inverted: #ffffff;  /* Text auf dunklem Hintergrund */
+ 
+  /* Hintergrund- & Oberflächenfarben */
+  --color-background: #ffffff;     /* Hintergrund der gesamten Seite */
+  --color-surface: #ffffff;        /* Hintergrund von "Karten", Modals, Menüs */
+  --color-border: #dee2e6;         /* Für Trennlinien und Ränder */
+ 
+  /* Semantische Farben (für Feedback an Nutzer) */
+  --color-success: #28a745;        /* Erfolgsmeldungen */
+  --color-error: #dc3545;          /* Fehlermeldungen */
+  --color-warning: #ffc107;        /* Warnhinweise */
+ 
+  /* === TYPOGRAFIE === */
+  /* Schriftfamilien */
+  --font-family-base: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif; /* Moderne System-Schriftarten (schnell, OS-nativ) */
+  --font-family-heading: "Georgia", "Times New Roman", serif; /* Beispiel für eine Serif-Schrift für Titel */
+ 
+  /* Schriftgrößen (Skalierbar) */
+  --font-size-base: 1rem;          /* Basis (meist 16px) */
+  --font-size-sm: 0.875rem;        /* Klein (meist 14px) */
+  --font-size-lg: 1.125rem;        /* Etwas größer (meist 18px) */
+ 
+  /* === ABSTÄNDE (SPACING) === */
+  /* Basiert auf einem 8px-Raster (Multiplikatoren von 0.5rem = 8px) */
+  --spacing-xs: 0.25rem;           /* 4px */
+  --spacing-sm: 0.5rem;            /* 8px */
+  --spacing-md: 1rem;              /* 16px */
+  --spacing-lg: 1.5rem;            /* 24px */
+  --spacing-xl: 2rem;              /* 32px */
+  --spacing-xxl: 4rem;             /* 64px */
+ 
+  /* === UI-ELEMENTE === */
+  --border-radius: 0.35rem;         /* Standard-Radius für Ecken (Buttons, Karten) */
+  --box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); /* Dezenter Schatten für 'surface'-Elemente */
+  --transition-speed: 0.2s ease-in-out; /* Standard-Geschwindigkeit für Animationen (z.B. Hover) */
+}
+ 
+/* --------------------------------------------
+   3. GLOBALE BASIS-STILE
+--------------------------------------------
+   Grundlegende Stile für <html> und <body>.
+*/
+ 
+html {
+  /* Setzt die Basis-Schriftgröße auf 100% (meist 16px). 
+     Alle 'rem'-Einheiten beziehen sich hierauf. */
+  font-size: 100%;
+  /* Ermöglicht sanftes Scrollen, wenn man auf Ankerlinks (#...) klickt. */
+  scroll-behavior: smooth;
+}
+ 
+body {
+  /* Wendet die globalen Variablen an */
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-base);
+  color: var(--color-text);
+  background-color: var(--color-background);
+  padding: 1.25rem; /* Etwas Innenabstand für den Body */
+  padding: clamp(1rem, 2vw, 2rem); /* Reagiert auf Viewport-Größe */
+  /* * Zeilenhöhe von 1.6 (160%) ist sehr gut lesbar 
+   * für Fließtext (besser als der Standard von ~1.2).
+   */
+  line-height: 1.6;
+}
+ 
+/* --------------------------------------------
+   4. BASIS-TYPOGRAFIE
+--------------------------------------------
+   Standard-Stile für alle Textelemente.
+*/
+ 
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-family-heading); /* Nutzt die definierte Schriftart für Überschriften */
+  font-weight: 600; /* Etwas dicker als Standard */
+  line-height: 1.2; /* Engere Zeilenhöhe für Titel als für Fließtext */
+  /* Standard-Abstände (verhindert, dass sie "aneinanderkleben") */
+  margin-top: var(--spacing-lg);
+  margin-bottom: var(--spacing-md);
+}
+ 
+/* Typografische Skala (Beispiel) */
+h1 {
+  font-size: 2.5rem;
+}
+h2 {
+  font-size: 2rem;
+}
+h3 {
+  font-size: 1.75rem;
+}
+h4 {
+  font-size: 1.5rem;
+}
+ 
+/* Standard-Absatz */
+p {
+  /* Sorgt für einen Abstand zwischen Absätzen */
+  margin-bottom: var(--spacing-md);
+}
+ 
+/* Standard-Link-Stile */
+a {
+  color: var(--color-primary);
+  text-decoration: none; /* Entfernt die Standard-Unterstreichung */
+  /* Fügt einen sanften Übergang für den Hover-Effekt hinzu */
+  transition: color var(--transition-speed);
+}
+ 
+a:hover {
+  color: var(--color-primary-dark); /* Nutzt die dunklere Hover-Farbe */
+  text-decoration: underline; /* Fügt Unterstreichung beim Hover hinzu (Usability) */
+}
+ 
+/* --------------------------------------------
+   5. GÄNGIGE UTILITY-KLASSEN
+--------------------------------------------
+   Kleine "Helferklassen", die man im HTML 
+   direkt verwenden kann, um schnell 
+   Layouts oder Anpassungen vorzunehmen.
+*/
+ 
+/* * Zentriert den Inhalt und gibt ihm eine maximale Breite.
+* Wird oft als Haupt-Wrapper für Seiteninhalte verwendet.
+*/
+.container {
+  width: 90%; /* Auf Mobilgeräten nicht die volle Breite nutzen */
+  max-width: 1200px; /* Maximale Breite auf Desktops */
+  margin-left: auto; /* Zentriert den Container */
+  margin-right: auto;
+  padding-left: var(--spacing-md); /* Innenabstand, damit Inhalt nicht am Rand klebt */
+  padding-right: var(--spacing-md);
+}
+ 
+/* * NEU: Deine "Blaue Box" Utility-Klasse
+* Wendet die Primärfarbe als Hintergrund 
+* und die invertierte Textfarbe (Weiß) an.
+*/
+.bg-primary-box {
+  background-color: var(--color-primary);
+  color: var(--color-text-inverted);
+  /* Sorgt dafür, dass Links in der Box auch weiß sind */
+  a {
+    color: var(--color-text-inverted);
+    text-decoration: underline; /* Unterstreichung für Sichtbarkeit */
   }
-  
-  button:hover {
-    background: #357ab8;
+  /* Sorgt dafür, dass Überschriften in der Box auch weiß sind */
+  h1, h2, h3, h4, h5, h6 {
+    color: var(--color-text-inverted);
   }
+}
+ 
+/* Zentriert Textinhalte */
+.text-center {
+  text-align: center;
+}
+ 
+/* * Versteckt ein Element visuell, aber *nicht* für Screenreader.
+* Essentiell für Barrierefreiheit (Accessibility, a11y).
+* z.B. für "Weiterlesen"-Links: <a href="...">Weiterlesen <span class="visually-hidden">über Artikel X</span></a>
+*/
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.base-button {
+  /* Aussehen & Typografie */
+  background-color: #007bff; /* Primärfarbe (Blau) */
+  color: white; /* Weiße Schrift */
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.5;
+
+  /* Abstände & Rahmen */
+  padding: 10px 20px; /* Vertikaler und horizontaler Innenabstand */
+  border: none;
+  border-radius: 4px; /* Abgerundete Ecken */
   
-  /* Eingabefelder */
-  input, textarea {
-    padding: 8px 12px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-size: 1rem;
-  }
+  /* Mauszeiger & Animation */
+  cursor: pointer;
+  transition: background-color 0.3s ease, opacity 0.3s ease; /* Sanfte Übergänge */
+
+  /* WICHTIG: Vermeiden Sie hier width/height/margin/position */
+  /* Dies wird im Template angepasst, um Flexibilität zu gewährleisten */
+}
+
+/* Hover-Effekt für Interaktion */
+.base-button:hover {
+  background-color: #0056b3; /* Dunkleres Blau bei Hover */
+}
+
+/* Deaktivierter Zustand */
+.base-button:disabled {
+  background-color: #ccc; /* Grauer Hintergrund, wenn deaktiviert */
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Globale Styles-Klasse (ersetzt oder erweitert den alten Input-Style) */
+
+/* Globale Styles-Klasse */
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not([type="image"]):not([type="file"]):not([type="color"]) {
+  /* Abstände & Größe */
+  width: 60%;
+  padding: 10px 12px;
+  box-sizing: border-box;
+
+  /* Aussehen & Rahmen */
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  background-color: #ffffff;
+
+  /* Typografie */
+  font-size: 16px;
+  color: #495057;
+  line-height: 1.5;
   
-  /* Überschriften */
-  h1, h2, h3, h4 {
-    font-family: sans-serif;
-    font-weight: 600;
-  }
+  /* Animation */
+  transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+/* 🖱️ Fokus-Effekt für textbasierte Inputs */
+input:not([type="checkbox"]):not([type="radio"]):focus {
+  border-color: #80bdff;
+  outline: 0;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+  background-color: #f8f9fa;
+}
+
+/* Deaktivierter Zustand */
+input:disabled {
+  background-color: #e9ecef;
+  cursor: not-allowed;
+}
+
+.form-group {
+  /* 1. Vertikalen Abstand beibehalten */
+  margin-bottom: 15px;
   
-  /* Standardtext */
-  body {
-    font-family: Arial, sans-serif;
-    line-height: 1.6;
-  }
+  /* 2. Flexbox aktivieren */
+  display: flex;
   
+  /* 3. Elemente untereinander anordnen (Label über Input) */
+  flex-direction: column; 
+  
+  /* 4. Sicherstellen, dass der Container die volle Breite nutzt */
+  width: 100%;
+}
+
+/* Optional: Label-Styling */
+.form-group label {
+  margin-bottom: 5px; /* Kleiner Abstand zwischen Label und Input */
+  font-weight: 600; /* Optional: Label fetter machen */
+  /* Da das Label bereits ein Inline-Element ist, wird es durch Flexbox Block-ähnlich */
+}
