@@ -1,428 +1,324 @@
-<template>
-  <div class="orders-page">
-    <!-- Übersicht der bestehenden Aufträge -->
-    <section class="orders-overview">
-      <h2>Meine Aufträge</h2>
-      <div v-if="orders.length === 0" class="empty-state">
-        Noch keine Aufträge vorhanden
-      </div>
-      <div v-else class="orders-list">
-        <div
-          v-for="order in orders"
-          :key="order.id"
-          class="order-card"
-          @mouseenter="hoveredOrderId = order.id"
-          @mouseleave="hoveredOrderId = null"
-        >
-          <div class="order-content">
-            <h3>{{ order.titel }}</h3>
-            <p class="order-description">{{ order.beschreibung }}</p>
-            <div class="order-meta">
-              <span class="meta-item">{{ order.handwerk }}</span>
-              <span class="meta-item">PLZ: {{ order.postleitzahl }}</span>
-              <span class="meta-item status" :class="order.status">{{ order.status }}</span>
-            </div>
-            <div class="order-dates">
-              <small>Erstellt: {{ formatDate(order.erstellt_am) }}</small>
-              <small>Aktualisiert: {{ formatDate(order.aktualisiert_am) }}</small>
-            </div>
-          </div>
-          <button
-            v-show="hoveredOrderId === order.id"
-            class="edit-button"
-            @click="editOrder(order)"
-            aria-label="Auftrag bearbeiten"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-            </svg>
-          </button>
-        </div>
-      </div>
-    </section>
-
-    <!-- Formular für neuen/bearbeiteten Auftrag -->
-    <section class="order-form-section">
-      <h2>{{ isEditing ? 'Auftrag bearbeiten' : 'Neuen Auftrag erstellen' }}</h2>
-      <form @submit.prevent="handleSubmit" class="order-form">
-        <div class="form-group">
-          <label for="titel">Titel</label>
-          <input
-            id="titel"
-            v-model="formData.titel"
-            type="text"
-            placeholder="Projekttitel"
-            required
-          />
-        </div>
-
-        <div class="form-group">
-          <label for="beschreibung">Beschreibung</label>
-          <textarea
-            id="beschreibung"
-            v-model="formData.beschreibung"
-            placeholder="Auftragsbeschreibung"
-            rows="4"
-            required
-          ></textarea>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label for="handwerk">Handwerk</label>
-            <input
-              id="handwerk"
-              v-model="formData.handwerk"
-              type="text"
-              placeholder="z.B. Elektrik"
-              required
-            />
-          </div>
-
-          <div class="form-group">
-            <label for="postleitzahl">Postleitzahl</label>
-            <input
-              id="postleitzahl"
-              v-model="formData.postleitzahl"
-              type="text"
-              placeholder="PLZ"
-              pattern="[0-9]{5}"
-              required
-            />
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label for="status">Status</label>
-          <select id="status" v-model="formData.status" required>
-            <option value="offen">Offen</option>
-            <option value="in_bearbeitung">In Bearbeitung</option>
-            <option value="abgeschlossen">Abgeschlossen</option>
-          </select>
-        </div>
-
-        <div class="form-actions">
-          <button v-if="isEditing" type="button" @click="cancelEdit" class="btn-secondary">
-            Abbrechen
-          </button>
-          <button type="submit" class="btn-primary">
-            {{ isEditing ? 'Auftrag aktualisieren' : 'Auftrag erstellen' }}
-          </button>
-        </div>
-      </form>
-    </section>
-  </div>
-</template>
-
 <script setup>
-import { ref, reactive, onMounted } from 'vue';
+import { ref, onMounted } from 'vue'; // WICHTIG: onMounted hinzugefügt
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:8000/api';
+// --- STATE (Daten) ---
+const showModal = ref(false);
+const orders = ref([]); // Jetzt starten wir leer!
 
-// State Management
-const orders = ref([]);
-const hoveredOrderId = ref(null);
-const isEditing = ref(false);
-const editingOrderId = ref(null);
-
-const formData = reactive({
-  titel: '',
-  beschreibung: '',
-  handwerk: '',
-  postleitzahl: '',
-  status: 'offen'
+// Formulardaten
+const jobData = ref({
+  title: '',
+  description: '',
+  trade: 'OTHER',
+  zip_code: '',
+  city: '',
+  price: null,
+  execution_date: null
 });
 
-// Aufträge vom Backend laden
-const fetchOrders = async () => {
+// --- API LOGIK ---
+
+// 1. Daten vom Server holen (GET)
+// MyJobs.vue (oder wie du deine Verwaltungs-Komponente genannt hast)
+
+const fetchJobs = async () => {
+  const token = localStorage.getItem('token');
+
+  // Sicherheits-Check
+  if (!token) {
+      console.error("Nicht eingeloggt");
+      return;
+  }
+
   try {
-    const response = await axios.get(`${API_BASE_URL}/auftraege/`);
-    orders.value = response.data;
+    // WICHTIG: Hier rufen wir jetzt den neuen "my_jobs" Endpunkt auf!
+    const response = await axios.get('http://127.0.0.1:8000/api/jobs/my_jobs/', {
+        headers: {
+            'Authorization': `Token ${token}` // Auth ist hier zwingend nötig!
+        }
+    });
+
+    orders.value = response.data; // Das sind jetzt nur DEINE Jobs
   } catch (error) {
-    console.error('Fehler beim Laden der Aufträge:', error);
+    console.error("Fehler beim Laden meiner Jobs:", error);
   }
 };
 
-// Auftrag erstellen oder aktualisieren
-const handleSubmit = async () => {
-  try {
-    if (isEditing.value) {
-      // Auftrag aktualisieren
-      const response = await axios.put(
-        `${API_BASE_URL}/auftraege/${editingOrderId.value}/`,
-        formData
-      );
-      const index = orders.value.findIndex(o => o.id === editingOrderId.value);
-      if (index !== -1) {
-        orders.value[index] = response.data;
-      }
-    } else {
-      // Neuen Auftrag erstellen
-      const response = await axios.post(`${API_BASE_URL}/auftraege/`, formData);
-      orders.value.unshift(response.data);
-    }
-    resetForm();
-  } catch (error) {
-    console.error('Fehler beim Speichern des Auftrags:', error);
-  }
-};
-
-// Auftrag für Bearbeitung laden
-const editOrder = (order) => {
-  isEditing.value = true;
-  editingOrderId.value = order.id;
-  Object.assign(formData, {
-    titel: order.titel,
-    beschreibung: order.beschreibung,
-    handwerk: order.handwerk,
-    postleitzahl: order.postleitzahl,
-    status: order.status
-  });
-  // Scroll zum Formular
-  document.querySelector('.order-form-section').scrollIntoView({ behavior: 'smooth' });
-};
-
-// Bearbeitung abbrechen
-const cancelEdit = () => {
-  resetForm();
-};
-
-// Formular zurücksetzen
-const resetForm = () => {
-  isEditing.value = false;
-  editingOrderId.value = null;
-  formData.titel = '';
-  formData.beschreibung = '';
-  formData.handwerk = '';
-  formData.postleitzahl = '';
-  formData.status = 'offen';
-};
-
-// Datum formatieren
-const formatDate = (dateString) => {
-  const date = new Date(dateString);
-  return date.toLocaleDateString('de-DE', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric'
-  });
-};
-
-// Beim Laden der Komponente
+// 2. Automatisch laden, wenn die Seite aufgeht
 onMounted(() => {
-  fetchOrders();
+  fetchJobs();
 });
+
+// 3. Neuen Job speichern (POST)
+const submitJob = async () => {
+  const token = localStorage.getItem('token');
+
+  if (!token) {
+    alert("Fehler: Du bist nicht eingeloggt.");
+    return;
+  }
+
+  try {
+    await axios.post('http://127.0.0.1:8000/api/jobs/', jobData.value, {
+      headers: { 'Authorization': `Token ${token}` }
+    });
+
+    // WICHTIG: Liste neu laden, damit der neue Auftrag sofort sichtbar ist
+    await fetchJobs();
+
+    closeModal();
+    // Formular resetten
+    jobData.value = { title: '', description: '', trade: 'OTHER', zip_code: '', city: '', price: null };
+    alert("Auftrag erfolgreich angelegt!");
+
+  } catch (error) {
+    console.error('Fehler:', error);
+    alert("Fehler beim Speichern.");
+  }
+};
+
+// --- HELPER ---
+const createOrder = () => {
+  showModal.value = true;
+};
+
+const closeModal = () => {
+  showModal.value = false;
+};
 </script>
 
+<template>
+  <div class="page-wrapper">
+    <div class="orders-container">
+
+      <header class="header-section">
+        <h1 class="main-title">Aufträge verwalten</h1>
+      </header>
+
+      <section class="action-card">
+        <div class="action-content">
+          <h2>Auftrag erstellen</h2>
+          <p class="action-desc">Neuen Kundenauftrag anlegen</p>
+        </div>
+        <button @click="createOrder" class="circle-btn" aria-label="Neuen Auftrag erstellen">
+          <span class="plus-icon">+</span>
+        </button>
+      </section>
+
+      <section class="list-section">
+        <h2 class="sub-title">Aktuelle Aufträge</h2>
+
+        <div v-if="orders.length === 0" class="empty-state">
+          Keine Aufträge gefunden.
+        </div>
+
+        <ul v-else class="order-list">
+          <li v-for="order in orders" :key="order.id" class="order-item">
+            <div class="order-details">
+              <span class="order-title">{{ order.title }}</span>
+
+              <span class="order-customer">
+                 {{ order.trade }} | {{ order.price }} €
+                 <br>
+                 <small>{{ order.description }}</small>
+              </span>
+            </div>
+
+            <div class="order-meta">
+              <span class="date-badge">
+                {{ new Date(order.created_at).toLocaleDateString() }}
+              </span>
+            </div>
+          </li>
+        </ul>
+      </section>
+
+    </div>
+
+    <div v-if="showModal" class="modal-overlay" @click.self="closeModal">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3>Neuen Auftrag erfassen</h3>
+          <button @click="closeModal" class="close-btn">×</button>
+        </div>
+
+        <form @submit.prevent="submitJob" class="job-form">
+          <div class="form-group">
+            <label>Titel</label>
+            <input v-model="jobData.title" type="text" required placeholder="Was ist zu tun?">
+          </div>
+
+          <div class="form-group">
+            <label>Beschreibung</label>
+            <textarea v-model="jobData.description" rows="3" placeholder="Details..."></textarea>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+                <label>PLZ</label>
+                <input v-model="jobData.zip_code" type="text" maxlength="5">
+            </div>
+            <div class="form-group">
+                <label>Stadt</label>
+                <input v-model="jobData.city" type="text">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Gewerk</label>
+            <select v-model="jobData.trade">
+                <option value="OTHER">Sonstiges</option>
+                <option value="PLUMBER">Sanitär</option>
+                <option value="ELECTRICIAN">Elektrik</option>
+                <option value="PAINTER">Maler</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+             <label>Preis (€)</label>
+             <input v-model="jobData.price" type="number" step="0.01">
+          </div>
+
+          <button type="submit" class="submit-btn">Auftrag speichern</button>
+        </form>
+      </div>
+    </div>
+    </div>
+</template>
+
 <style scoped>
-.orders-page {
-  max-width: 1200px;
+/* --- DEINE BESTEHENDEN STYLES (Unverändert) --- */
+.page-wrapper {
+  padding: 1rem;
+  background-color: #f4f6f8;
+  min-height: 100vh;
+}
+.orders-container {
+  max-width: 800px;
   margin: 0 auto;
-  padding: 2rem;
+  font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  color: #333;
 }
-
-/* Übersicht Section */
-.orders-overview {
-  margin-bottom: 3rem;
-}
-
-.orders-overview h2 {
-  margin-bottom: 1.5rem;
-}
-
-.empty-state {
+.main-title {
   text-align: center;
-  padding: 3rem;
-  color: var(--text-secondary);
+  font-size: 1.8rem;
+  margin-bottom: 1.5rem;
+  color: #1a202c;
+  font-weight: 700;
 }
-
-.orders-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 1.5rem;
-}
-
-.order-card {
-  position: relative;
-  padding: 1.5rem;
-  border-radius: var(--border-radius, 8px);
-  background: var(--card-bg, #fff);
-  border: 1px solid var(--border-color, #e0e0e0);
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.order-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
-}
-
-.order-content h3 {
-  margin: 0 0 0.5rem 0;
-  font-size: 1.25rem;
-}
-
-.order-description {
-  color: var(--text-secondary);
-  margin-bottom: 1rem;
-  line-height: 1.5;
-}
-
-.order-meta {
-  display: flex;
-  gap: 0.75rem;
-  margin-bottom: 0.75rem;
-  flex-wrap: wrap;
-}
-
-.meta-item {
-  padding: 0.25rem 0.75rem;
-  background: var(--tag-bg, #f5f5f5);
+.action-card {
+  background: white;
   border-radius: 12px;
-  font-size: 0.875rem;
-}
-
-.meta-item.status {
-  font-weight: 500;
-}
-
-.meta-item.status.offen {
-  background: var(--status-open, #e3f2fd);
-  color: var(--status-open-text, #1976d2);
-}
-
-.meta-item.status.in_bearbeitung {
-  background: var(--status-progress, #fff3e0);
-  color: var(--status-progress-text, #f57c00);
-}
-
-.meta-item.status.abgeschlossen {
-  background: var(--status-done, #e8f5e9);
-  color: var(--status-done-text, #388e3c);
-}
-
-.order-dates {
+  padding: 1.5rem;
   display: flex;
   justify-content: space-between;
-  font-size: 0.75rem;
-  color: var(--text-muted);
-}
-
-.edit-button {
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
-  padding: 0.5rem;
-  background: var(--primary-color, #2196f3);
-  color: white;
-  border: none;
-  border-radius: 50%;
-  cursor: pointer;
-  transition: background 0.2s;
-  display: flex;
   align-items: center;
-  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  margin-bottom: 2rem;
+  transition: transform 0.2s ease;
+}
+.action-card:active { transform: scale(0.98); }
+.action-content h2 { margin: 0; font-size: 1.2rem; color: #2d3748; }
+.action-desc { margin: 0.3rem 0 0 0; font-size: 0.9rem; color: #718096; }
+.circle-btn {
+  width: 56px; height: 56px; border-radius: 50%;
+  background: linear-gradient(135deg, #42b983 0%, #3aa876 100%);
+  border: none; color: white; font-size: 2rem; cursor: pointer;
+  box-shadow: 0 4px 12px rgba(66, 185, 131, 0.4);
+  display: flex; justify-content: center; align-items: center; flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+.circle-btn:active { transform: scale(0.95); box-shadow: 0 2px 6px rgba(66, 185, 131, 0.4); }
+.plus-icon { margin-top: -4px; font-weight: 300; }
+.sub-title { font-size: 1.1rem; color: #4a5568; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+.order-list { list-style: none; padding: 0; margin: 0; }
+.order-item {
+  background: white; border-radius: 10px; padding: 1rem; margin-bottom: 0.8rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex;
+  justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;
+}
+.order-details { display: flex; flex-direction: column; }
+.order-title { font-weight: 600; color: #2d3748; font-size: 1rem; }
+.order-customer { font-size: 0.85rem; color: #718096; margin-top: 0.2rem; }
+.date-badge {
+  background-color: #e6fffa; color: #2c7a7b; padding: 0.3rem 0.6rem;
+  border-radius: 6px; font-size: 0.8rem; font-weight: 500; white-space: nowrap;
 }
 
-.edit-button:hover {
-  background: var(--primary-dark, #1976d2);
-}
-
-/* Formular Section */
-.order-form-section {
-  background: var(--card-bg, #fff);
-  padding: 2rem;
-  border-radius: var(--border-radius, 8px);
-  border: 1px solid var(--border-color, #e0e0e0);
-}
-
-.order-form-section h2 {
-  margin-bottom: 1.5rem;
-}
-
-.order-form {
-  max-width: 600px;
-}
-
-.form-group {
-  margin-bottom: 1.5rem;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: 500;
-}
-
-.form-group input,
-.form-group textarea,
-.form-group select {
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid var(--input-border, #ccc);
-  border-radius: var(--border-radius, 4px);
-  font-size: 1rem;
-  transition: border-color 0.2s;
-}
-
-.form-group input:focus,
-.form-group textarea:focus,
-.form-group select:focus {
-  outline: none;
-  border-color: var(--primary-color, #2196f3);
-}
-
-.form-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-}
-
-.form-actions {
+/* --- NEU: MODAL STYLES --- */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: rgba(0,0,0,0.5); /* Halbtransparenter Hintergrund */
   display: flex;
-  gap: 1rem;
-  justify-content: flex-end;
-  margin-top: 2rem;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 1rem;
 }
 
-.btn-primary,
-.btn-secondary {
-  padding: 0.75rem 1.5rem;
+.modal-card {
+  background: white;
+  width: 100%;
+  max-width: 500px;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.modal-header h3 { margin: 0; font-size: 1.3rem; color: #2d3748; }
+
+.close-btn {
+  background: none; border: none; font-size: 2rem;
+  line-height: 1; cursor: pointer; color: #718096;
+}
+
+.job-form .form-group { margin-bottom: 1rem; }
+.job-form label { display: block; margin-bottom: 0.4rem; font-weight: 600; font-size: 0.9rem; color: #4a5568; }
+.job-form input, .job-form textarea, .job-form select {
+  width: 100%; padding: 0.7rem; border: 1px solid #e2e8f0;
+  border-radius: 8px; font-size: 1rem;
+  font-family: inherit;
+}
+.job-form input:focus { border-color: #42b983; outline: none; }
+
+.form-row { display: flex; gap: 1rem; }
+.form-row .form-group { flex: 1; }
+
+.submit-btn {
+  width: 100%;
+  padding: 0.8rem;
+  background-color: #42b983;
+  color: white;
   border: none;
-  border-radius: var(--border-radius, 4px);
+  border-radius: 8px;
   font-size: 1rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s;
+  margin-top: 0.5rem;
 }
+.submit-btn:hover { background-color: #3aa876; }
 
-.btn-primary {
-  background: var(--primary-color, #2196f3);
-  color: white;
-}
-
-.btn-primary:hover {
-  background: var(--primary-dark, #1976d2);
-}
-
-.btn-secondary {
-  background: var(--secondary-color, #757575);
-  color: white;
-}
-
-.btn-secondary:hover {
-  background: var(--secondary-dark, #616161);
-}
-
-/* Responsive Design */
-@media (max-width: 768px) {
-  .orders-list {
-    grid-template-columns: 1fr;
-  }
-
-  .form-row {
-    grid-template-columns: 1fr;
-  }
+/* Responsive adjustments */
+@media (max-width: 600px) {
+  .page-wrapper { padding: 0.5rem; }
+  .main-title { font-size: 1.5rem; margin-top: 1rem; }
+  .action-card { padding: 1rem; }
+  .action-content h2 { font-size: 1.1rem; }
+  .circle-btn { width: 48px; height: 48px; font-size: 1.6rem; }
 }
 </style>

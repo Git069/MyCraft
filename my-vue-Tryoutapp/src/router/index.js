@@ -3,6 +3,8 @@ import HomeView from '@/views/HomeView.vue'
 import LoginView from '@/views/LoginView.vue'
 import RegisterView from '@/views/RegisterView.vue'
 import CreateJobView from '@/views/CreateJobView.vue'
+import JobMarketplaceView from '@/views/JobMarketplaceView.vue'
+
 
 
 
@@ -31,6 +33,12 @@ const router = createRouter({
       path: '/create-job',
       name: 'Job creation',
       component: CreateJobView
+    },
+
+    {
+      path: '/marketplace',
+      name: 'Job overview',
+      component: JobMarketplaceView
     }
 
   ],

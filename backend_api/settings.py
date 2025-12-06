@@ -37,11 +37,15 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "corsheaders",
     "rest_framework",
+    "rest_framework.authtoken",
     "users",
+    "jobs",
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -136,3 +140,12 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated', # Standardmäßig nur für eingeloggte User
     ),
 }
+
+# CORS Konfiguration
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+
+# Optional: Erlaubt das Senden von Cookies/Tokens (wichtig für später)
+CORS_ALLOW_CREDENTIALS = True
