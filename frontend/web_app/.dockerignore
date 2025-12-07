@@ -1,0 +1,26 @@
+# Git
+.git
+.gitignore
+
+# Abhängigkeiten
+node_modules
+
+# Build-Artefakte
+dist
+
+# Logs
+npm-debug.log
+yarn-error.log
+pnpm-debug.log*
+
+# Temporäre Dateien
+.temp
+.cache
+
+# Lokale Umgebungsvariablen-Dateien
+.env.local
+.env.*.local
+
+# Docker-spezifisch
+Dockerfile
+.dockerignore

@@ -1,0 +1,22 @@
+services:
+  backend:
+    build: 
+      context: ./backend
+    ports:
+      - "8000:8000"
+    profiles:
+      - develop
+    volumes:
+      - ./backend:/app
+
+  frontend:
+    build:
+      context: ./frontend/web_app
+    ports:
+      - "8080:80"
+    profiles:
+      - develop
+    volumes:
+      - ./frontend/web_app:/app
+    depends_on:
+      - backend

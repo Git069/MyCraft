@@ -1,0 +1,10 @@
+.git
+.idea
+__pycache__
+venv_django/
+db.sqlite3
+media/
+static/
+*.log
+Dockerfile
+.dockerignore
