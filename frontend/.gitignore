@@ -1,3 +1,6 @@
+# Environment variables
+/web_app/.env
+
 # ------------------------------------
 # 3. Frontend Ignore-Datei (/frontend)
 # ------------------------------------

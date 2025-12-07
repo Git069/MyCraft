@@ -18,9 +18,14 @@ Before you begin, ensure you have the following installed:
    ```
 
 2. **Set up environment variables:**
-   The backend requires environment variables to run. Copy the example file to create your own configuration:
+   Both the backend and frontend require environment variables. Copy the example files to create your own local configurations:
+
    ```sh
+   # For the backend
    cp backend/.env.example backend/.env
+
+   # For the frontend
+   cp frontend/web_app/.env.example frontend/web_app/.env
    ```
    The default values are suitable for local development.
 

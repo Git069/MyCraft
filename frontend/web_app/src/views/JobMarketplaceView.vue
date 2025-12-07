@@ -5,15 +5,19 @@ import axios from 'axios';
 const jobs = ref([]);
 const loading = ref(true);
 
+// --- API Configuration ---
+// The base URL for the API is loaded from an environment variable.
+// This makes it easy to switch between development and production environments.
+const apiUrl = import.meta.env.VITE_API_URL;
+
 // Mapping für Bilder basierend auf dem Gewerk (Trade)
-// Hier nutzen wir kostenlose Platzhalter-Bilder von Unsplash
 const tradeImages = {
-  PLUMBER: 'https://images.unsplash.com/photo-1581244277943-fe4a9c777189?auto=format&fit=crop&w=400&q=80', // Klempner
-  ELECTRICIAN: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=400&q=80', // Elektriker
-  PAINTER: 'https://images.unsplash.com/photo-1589939705384-5185137a7f0f?auto=format&fit=crop&w=400&q=80', // Maler
-  CARPENTER: 'https://images.unsplash.com/photo-1611021061285-19a87a1964e2?auto=format&fit=crop&w=400&q=80', // Tischler
-  GARDENER: 'https://images.unsplash.com/photo-1558904541-efa843a96f01?auto=format&fit=crop&w=400&q=80', // Gärtner
-  OTHER: 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?auto=format&fit=crop&w=400&q=80' // Sonstiges
+  PLUMBER: 'https://images.unsplash.com/photo-1581244277943-fe4a9c777189?auto=format&fit=crop&w=400&q=80',
+  ELECTRICIAN: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=400&q=80',
+  PAINTER: 'https://images.unsplash.com/photo-1589939705384-5185137a7f0f?auto=format&fit=crop&w=400&q=80',
+  CARPENTER: 'https://images.unsplash.com/photo-1611021061285-19a87a1964e2?auto=format&fit=crop&w=400&q=80',
+  GARDENER: 'https://images.unsplash.com/photo-1558904541-efa843a96f01?auto=format&fit=crop&w=400&q=80',
+  OTHER: 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?auto=format&fit=crop&w=400&q=80'
 };
 
 // Hilfsfunktion für schöne Preisformatierung
@@ -21,10 +25,10 @@ const formatPrice = (price) => {
   return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(price);
 };
 
-// API Call
+// API Call using the environment variable
 const fetchJobs = async () => {
   try {
-    const response = await axios.get('http://127.0.0.1:8000/api/jobs/');
+    const response = await axios.get(`${apiUrl}/jobs/`);
     jobs.value = response.data;
   } catch (error) {
     console.error("Fehler beim Laden:", error);
@@ -34,7 +38,6 @@ const fetchJobs = async () => {
 };
 
 // Computed Property: Filtere nur "OFFENE" Jobs
-// (Damit keine erledigten Aufträge angezeigt werden)
 const availableJobs = computed(() => {
   return jobs.value.filter(job => job.status === 'OPEN');
 });
@@ -98,19 +101,16 @@ onMounted(() => {
 .market-header h1 { font-size: 2.5rem; color: #222; margin-bottom: 0.5rem; }
 .market-header p { color: #717171; }
 
-/* --- GRID SYSTEM --- */
 .jobs-grid {
   display: grid;
-  /* Das ist der responsive Zauber: Spalten füllen sich automatisch */
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 24px;
 }
 
-/* --- CARD DESIGN --- */
 .job-card {
   background: white;
   border-radius: 12px;
-  overflow: hidden; /* Damit das Bild an den Ecken abgerundet wird */
+  overflow: hidden;
   box-shadow: 0 4px 12px rgba(0,0,0,0.08);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   display: flex;
@@ -118,7 +118,7 @@ onMounted(() => {
 }
 
 .job-card:hover {
-  transform: translateY(-4px); /* Leichtes Anheben beim Hover */
+  transform: translateY(-4px);
   box-shadow: 0 12px 20px rgba(0,0,0,0.12);
 }
 
@@ -130,7 +130,7 @@ onMounted(() => {
 .card-image img {
   width: 100%;
   height: 100%;
-  object-fit: cover; /* Bild füllt den Bereich ohne Verzerrung */
+  object-fit: cover;
 }
 
 .category-badge {
@@ -149,7 +149,7 @@ onMounted(() => {
   padding: 1rem;
   display: flex;
   flex-direction: column;
-  flex-grow: 1; /* Füllt den restlichen Platz */
+  flex-grow: 1;
 }
 
 .card-header {
@@ -187,13 +187,13 @@ onMounted(() => {
 }
 
 .card-footer {
-  margin-top: auto; /* Drückt den Button immer ganz nach unten */
+  margin-top: auto;
 }
 
 .book-btn {
   width: 100%;
   padding: 10px;
-  background-color: #ff385c; /* Airbnb-Rot (ähnlich) */
+  background-color: #ff385c;
   color: white;
   border: none;
   border-radius: 8px;
@@ -202,10 +202,9 @@ onMounted(() => {
 }
 .book-btn:hover { background-color: #d90b3e; }
 
-/* Mobile Anpassung */
 @media (max-width: 600px) {
   .jobs-grid {
-    grid-template-columns: 1fr; /* Auf Handy nur eine Spalte */
+    grid-template-columns: 1fr;
   }
 }
 </style>
