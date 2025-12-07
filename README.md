@@ -37,9 +37,9 @@ Before you begin, ensure you have the following installed:
 
    This will start both the backend and frontend services in development mode with live-reloading enabled.
 
-## Accessing the Application
+## Accessing the Application (Development)
 
-- **Frontend:** [http://localhost:8080](http://localhost:8080)
+- **Frontend (Vite Dev Server):** [http://localhost:5173](http://localhost:5173)
 - **Backend API:** [http://localhost:8000](http://localhost:8000)
 
 ## Project Structure
