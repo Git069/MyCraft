@@ -17,7 +17,14 @@ Before you begin, ensure you have the following installed:
    cd MyCraft
    ```
 
-2. **Run the application:**
+2. **Set up environment variables:**
+   The backend requires environment variables to run. Copy the example file to create your own configuration:
+   ```sh
+   cp backend/.env.example backend/.env
+   ```
+   The default values are suitable for local development.
+
+3. **Run the application:**
    Use the following command to build and run the entire application:
    ```sh
    docker-compose --profile develop up --build
