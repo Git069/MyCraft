@@ -1,0 +1,23 @@
+# ------------------------------------
+# 3. Frontend Ignore-Datei (/frontend)
+# ------------------------------------
+
+# Abhängigkeiten (innerhalb des web_app-Ordners)
+/web_app/node_modules
+
+# Build-Artefakte
+# Die "dist"-Ausgabe von Vite, die für die Produktion generiert wird
+/web_app/dist
+
+# Logs
+npm-debug.log
+yarn-error.log
+pnpm-debug.log*
+
+# Temporäre Dateien
+.temp
+.cache
+
+# Lokale Umgebungsvariablen-Dateien (sehr wichtig!)
+/web_app/.env.local
+/web_app/.env.*.local

@@ -1,0 +1,32 @@
+# ------------------------------------
+# 2. Backend Ignore-Datei (/backend)
+# ------------------------------------
+
+# Python-Artefakte
+# Bytecode-Dateien
+__pycache__/
+*.pyc
+
+# Virtuelle Umgebung
+# Ignoriert den Ordner venv_django/
+venv_django/
+
+# Datenbank
+# Ignoriert die lokale SQLite-Datenbank
+db.sqlite3
+
+# Django-spezifisches
+# Migrations-Dateien (können manchmal ignoriert werden,
+# wenn sie von der App-Logik her unwichtig sind. Empfohlen ist, nur die __init__.py zu ignorieren)
+# Hier ignorieren wir die generierten Dateien:
+*/migrations/*.py
+!*/migrations/__init__.py
+
+# Media/Statische Dateien
+# Wenn Django Dateien hochlädt oder generiert, sollten diese ignoriert werden
+media/
+static/
+
+# Dokumentation und Logs
+docs/_build/
+*.log
