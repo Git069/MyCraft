@@ -10,13 +10,13 @@ services:
       - develop
     volumes:
       - ./backend:/app
-    # The default command from the Dockerfile is used, which is fine for development.
 
   frontend:
     build:
       context: ./frontend/web_app
-    # The development server runs on port 5173 inside the container.
-    # We map it to port 5173 on the host.
+      # For development, we only want to build the 'build' stage from our Dockerfile.
+      # This stage has Node.js and npm installed.
+      target: build
     ports:
       - "5173:5173"
     env_file:
@@ -25,9 +25,14 @@ services:
       - develop
     volumes:
       - ./frontend/web_app:/app
-      # Prevent node_modules from being overwritten by the local empty folder
-      - /app/node_modules
-    # This command overrides the Dockerfile's CMD to start the dev server.
+      # This named volume prevents the node_modules directory in the container
+      # from being overwritten by the host's empty directory on startup.
+      - node_modules:/app/node_modules
+    # We still need to specify the command to run the dev server.
     command: npm run dev
     depends_on:
       - backend
+
+# Define the named volume for node_modules
+volumes:
+  node_modules:

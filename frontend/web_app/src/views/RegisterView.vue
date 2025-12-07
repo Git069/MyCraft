@@ -1,116 +1,168 @@
-<template>
-    <div class="register">
-      <h2>Registrieren</h2>
-    
-    <form @submit.prevent="registerUser">
+<script setup>
+import { ref } from 'vue';
+import { useRouter } from 'vue-router';
+import api from '@/api';
 
-      <div class="form-group">
-        <label for="name">Name</label>
-        <input type="text" id="name" v-model="name" required>
-      </div>
+// Reactive state for form inputs
+const email = ref('');
+const password = ref('');
+const password2 = ref('');
+const errorMessage = ref('');
+const isLoading = ref(false);
 
-      <div class="form-group">
-        <label for="name">Nachname</label>
-        <input type="text" id="lastname" v-model="lastname" required>
-      </div>
-      
-      <div class="form-group">
-        <label for="email">E-Mail</label>
-        <input type="email" id="email" v-model="email" required>
-      </div>
+const router = useRouter();
 
-      <div class="form-group">
-        <label for="password">Passwort</label>
-        <input type="password" id="password" v-model="password" required>
-      </div>
+const handleRegister = async () => {
+  errorMessage.value = '';
+  isLoading.value = true;
 
-      <div v-if="error" class="error-message">
-        {{ error }}
-      </div>
-      
-      <div v-if="success" class="success-message">
-        {{ success }}
-      </div>
-
-      <button type="submit" :disabled="isLoading" class="base-button">
-        {{ isLoading ? 'Registriere...' : 'Registrierung abschließen' }}
-      </button>
-    </form>
-      </div>
-  </template>
-  
-  <script setup>
-  import { ref } from 'vue';
-  import axios from 'axios';
-  import { useRouter } from 'vue-router'; // Um nach erfolgreicher Registrierung weiterzuleiten
-  
-  // Konkreter API-Endpunkt für die Registrierung im Django-Backend
-  const REGISTER_URL = 'http://127.0.0.1:8000/api/auth/register/';
-  
-  // Zustandsvariablen für die Formularfelder und das Feedback
-  const email = ref('');
-  const password = ref('');
-  const error = ref(null);
-  const success = ref(null);
-  const isLoading = ref(false);
-  
-  const router = useRouter();
-  
-  /**
-   * Sendet die Registrierungsdaten an die Django-API.
-   */
-  async function registerUser() {
-    error.value = null; // Alte Fehler löschen
-    success.value = null; // Alte Erfolgsmeldungen löschen
-    isLoading.value = true;
-  
-    // Das Objekt muss GENAU die Feldnamen enthalten, die der Django Serializer erwartet!
-    // Unser Serializer erwartet 'email' und 'password'.
-    const registrationData = {
-      email: email.value,
-      password: password.value
-    };
-  
-    try {
-      const response = await axios.post(REGISTER_URL, registrationData);
-  
-      // Erfolg: Status 201 (Created)
-      success.value = response.data.message || 'Registrierung erfolgreich!';
-      console.log('Registrierung erfolgreich:', response.data);
-  
-      // Weiterleitung zur Login-Seite nach 2 Sekunden
-      setTimeout(() => {
-        router.push({ name: 'Login' }); // Geht zur Route mit dem Namen 'Login'
-      }, 2000);
-  
-    } catch (err) {
-      // Fehlerbehandlung: Status 400 (Bad Request)
-      console.error('Registrierungsfehler:', err.response);
-      
-      if (err.response && err.response.data) {
-        // Spezifische Fehler vom Serializer anzeigen
-        if (err.response.data.email) {
-            error.value = `Fehler: ${err.response.data.email[0]}`;
-        } else if (err.response.data.password) {
-            error.value = `Passwortfehler: ${err.response.data.password[0]}`;
-        } else {
-            error.value = 'Ein unbekannter Fehler ist aufgetreten.';
-        }
-      } else {
-        error.value = 'Der Server ist nicht erreichbar. Bitte später erneut versuchen.';
-      }
-  
-    } finally {
-      isLoading.value = false;
-    }
+  // --- Client-side validation ---
+  if (!email.value || !password.value || !password2.value) {
+    errorMessage.value = 'Bitte füllen Sie alle Felder aus.';
+    isLoading.value = false;
+    return;
   }
-  </script>
-  
-  <style scoped>
-  /* Hier könnten Sie einfaches CSS für .form-group, .error-message, etc. definieren */
-  
-  .error-message { color: red; margin-top: 10px; }
-  .success-message { color: green; margin-top: 10px; }
-  /*.form-group { margin-bottom: 15px; }*/
-  input { width: 100%; padding: 8px; box-sizing: border-box; }
-  </style>
+  if (password.value !== password2.value) {
+    errorMessage.value = 'Die Passwörter stimmen nicht überein.';
+    isLoading.value = false;
+    return;
+  }
+
+  try {
+    // --- API Call: Use email for both username and email ---
+    await api.register({
+      username: email.value, // Send email as username
+      email: email.value,
+      password: password.value,
+    });
+
+    // On success, redirect to the login page with a success message
+    router.push({ name: 'Login', query: { registered: 'true' } });
+
+  } catch (error) {
+    if (error.response && error.response.data) {
+      const errors = error.response.data;
+      const firstErrorKey = Object.keys(errors)[0];
+      // Make error message more user-friendly
+      if (firstErrorKey === 'username') {
+        errorMessage.value = 'Ein Benutzer mit dieser E-Mail-Adresse existiert bereits.';
+      } else {
+        errorMessage.value = `${firstErrorKey}: ${errors[firstErrorKey][0]}`;
+      }
+    } else {
+      errorMessage.value = 'Ein unbekannter Fehler ist aufgetreten.';
+    }
+    console.error('Registration failed:', error);
+  } finally {
+    isLoading.value = false;
+  }
+};
+</script>
+
+<template>
+  <div class="register-container">
+    <div class="register-form-wrapper">
+      <header class="form-header text-center">
+        <h1>Konto erstellen</h1>
+        <p>Werde Teil der MyCraft-Community.</p>
+      </header>
+
+      <form @submit.prevent="handleRegister" class="register-form">
+        <div v-if="errorMessage" class="error-message">
+          {{ errorMessage }}
+        </div>
+
+        <div class="form-group">
+          <label for="email">E-Mail-Adresse</label>
+          <input id="email" v-model="email" type="email" required />
+        </div>
+
+        <div class="form-group">
+          <label for="password">Passwort</label>
+          <input id="password" v-model="password" type="password" required />
+        </div>
+
+        <div class="form-group">
+          <label for="password2">Passwort bestätigen</label>
+          <input id="password2" v-model="password2" type="password" required />
+        </div>
+
+        <button type="submit" class="base-button register-button" :disabled="isLoading">
+          {{ isLoading ? 'Registriere...' : 'Konto erstellen' }}
+        </button>
+      </form>
+
+      <footer class="form-footer">
+        <p>
+          Du hast bereits ein Konto?
+          <router-link to="/login" class="login-link">Jetzt anmelden</router-link>
+        </p>
+      </footer>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+/* Styles are identical to the previous version, just without the username field */
+.register-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 80vh;
+  padding: var(--spacing-lg);
+}
+
+.register-form-wrapper {
+  width: 100%;
+  max-width: 450px;
+  padding: var(--spacing-xl);
+  background-color: var(--color-surface);
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+}
+
+.form-header {
+  margin-bottom: var(--spacing-lg);
+}
+.form-header h1 {
+  margin-top: 0;
+}
+.form-header p {
+  color: var(--color-text-light);
+}
+
+.register-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.register-button {
+  width: 100%;
+  background-color: var(--color-primary);
+  padding-top: var(--spacing-sm);
+  padding-bottom: var(--spacing-sm);
+}
+.register-button:hover {
+  background-color: var(--color-primary-dark);
+}
+
+.error-message {
+  background-color: var(--color-error);
+  color: var(--color-text-inverted);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--border-radius);
+  text-align: center;
+}
+
+.form-footer {
+  margin-top: var(--spacing-xl);
+  text-align: center;
+  font-size: var(--font-size-sm);
+}
+
+.login-link {
+  font-weight: 600;
+  color: var(--color-primary);
+}
+</style>
