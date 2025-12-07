@@ -47,3 +47,9 @@ Before you begin, ensure you have the following installed:
 - `backend/`: Contains the Django backend application.
 - `frontend/`: Contains the Vue.js frontend application.
 - `docker-compose.yml`: Defines the services, networks, and volumes for the Docker application.
+
+
+# DB
+Passwort: UKkFfRk5e7KjyLTy
+Organization: TheCraftsmen
+Project name: MyCraftDB

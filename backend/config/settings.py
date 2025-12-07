@@ -84,6 +84,19 @@ DATABASES = {
     }
 }
 
+'''
+# --- Database Configuration ---
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'MyCraftDB', # Standard-DB-Name von Supabase
+        'USER': 'postgres', # Standard-Benutzer von Supabase
+        'PASSWORD': 'UKkFfRk5e7KjyLTy', # <-- IHR PASSWORT VON SUPABASE
+        'HOST': 'sldqevyzgsxkbnqxmytt.supabase.co', # <-- IHR HOST VON SUPABASE
+        'PORT': '5432', # Standard-Port
+    }
+}
+'''
 
 # --- Password Validation ---
 AUTH_PASSWORD_VALIDATORS = [
