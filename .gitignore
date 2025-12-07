@@ -20,3 +20,6 @@
 venv/
 env/
 .venv/
+
+# Ignoriert den gesamten Konfigurationsordner von JetBrains IDEs
+.idea/
