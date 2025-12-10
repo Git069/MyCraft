@@ -1,19 +1,26 @@
 <script setup>
-import { ref, onMounted } from 'vue';
-import api from '@/api'; // Import the centralized API service
+import { ref, onMounted, watch } from 'vue';
+import { useRoute } from 'vue-router';
+import api from '@/api';
+import JobSearch from '@/components/JobSearch.vue';
 
 const jobs = ref([]);
 const loading = ref(true);
 const error = ref(null);
+const route = useRoute();
 
-// --- API Call ---
 const fetchJobs = async () => {
   loading.value = true;
   error.value = null;
   try {
-    // Fetch only open jobs from the backend
-    const response = await api.getJobs({ status: 'OPEN' });
-    // The backend now returns a paginated response
+    const params = {
+      status: 'OPEN',
+      search: route.query.search,
+      city: route.query.city,
+    };
+    Object.keys(params).forEach(key => params[key] === undefined && delete params[key]);
+
+    const response = await api.getJobs(params);
     jobs.value = response.data.results;
   } catch (err) {
     error.value = "Fehler beim Laden der Aufträge.";
@@ -27,7 +34,8 @@ onMounted(() => {
   fetchJobs();
 });
 
-// Helper functions and tradeImages remain the same...
+watch(() => route.query, fetchJobs);
+
 const tradeImages = {
   PLUMBER: 'https://images.unsplash.com/photo-1581244277943-fe4a9c777189?auto=format&fit=crop&w=400&q=80',
   ELECTRICIAN: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=400&q=80',
@@ -37,142 +45,134 @@ const tradeImages = {
   OTHER: 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?auto=format&fit=crop&w=400&q=80'
 };
 const formatPrice = (price) => {
+  if (!price) return 'Auf Anfrage';
   return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(price);
 };
 </script>
 
 <template>
   <div class="container">
-    <header class="market-header text-center">
-      <h1>Offene Aufträge finden</h1>
-      <p v-if="!loading">Wähle aus {{ jobs.length }} verfügbaren Handwerksaufträgen</p>
+    <header class="market-header">
+      <div class="compact-search-wrapper">
+        <JobSearch />
+      </div>
     </header>
 
     <div v-if="loading" class="loading-state">Lade Angebote...</div>
     <div v-if="error" class="error-message">{{ error }}</div>
 
-    <div v-if="!loading && !error" class="jobs-grid">
-      <article v-for="job in jobs" :key="job.id" class="job-card">
-        <div class="card-image">
-          <img :src="tradeImages[job.trade] || tradeImages.OTHER" alt="Gewerk Bild" />
-          <span class="category-badge">{{ job.trade }}</span>
-        </div>
-        <div class="card-content">
-          <div class="card-header">
+    <div v-if="!loading && !error && jobs.length === 0" class="empty-state">
+      <h2>Keine Aufträge gefunden</h2>
+      <p>Versuche es mit anderen Suchbegriffen oder erweitere deinen Suchradius.</p>
+    </div>
+
+    <div v-if="!loading && !error && jobs.length > 0" class="jobs-grid">
+      <router-link
+        v-for="job in jobs"
+        :key="job.id"
+        :to="{ name: 'JobDetail', params: { id: job.id } }"
+        class="job-card-link"
+      >
+        <article class="job-card">
+          <div class="card-image">
+            <img :src="tradeImages[job.trade] || tradeImages.OTHER" alt="Gewerk Bild" />
+          </div>
+          <div class="card-content">
             <h3 class="job-title">{{ job.title }}</h3>
-            <span class="job-price">{{ formatPrice(job.price) }}</span>
+            <p class="job-location">{{ job.zip_code }} {{ job.city }}</p>
+            <div class="job-price-wrapper">
+              <span class="job-price">{{ formatPrice(job.price) }}</span>
+            </div>
           </div>
-          <p class="job-location">📍 {{ job.zip_code }} {{ job.city }}</p>
-          <p class="job-desc">{{ job.description.substring(0, 80) }}...</p>
-          <div class="card-footer">
-            <button class="base-button book-btn">Details ansehen</button>
-          </div>
-        </div>
-      </article>
+        </article>
+      </router-link>
     </div>
   </div>
 </template>
 
 <style scoped>
-/* Styles remain the same */
 .market-header {
-  margin-bottom: var(--spacing-xxl);
+  padding: var(--spacing-md) 0;
+  margin-bottom: var(--spacing-xl);
+  border-bottom: 1px solid var(--color-border);
 }
-.market-header h1 {
-  color: var(--color-text);
+.compact-search-wrapper {
+  max-width: 500px;
+  margin: 0 auto;
+  transform: scale(0.85);
+  transform-origin: center;
 }
-.market-header p {
-  color: var(--color-text-light);
-  font-size: var(--font-size-lg);
+
+.job-card-link {
+  text-decoration: none;
+  color: inherit;
+  display: block; /* Ensures the link takes up the full grid cell */
 }
+
 .jobs-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: var(--spacing-lg);
+  gap: var(--spacing-xl);
 }
+
 .job-card {
   background: var(--color-surface);
   border-radius: var(--border-radius);
   overflow: hidden;
+  transition: box-shadow var(--transition-speed);
+  height: 100%;
+}
+
+.job-card-link:hover .job-card {
   box-shadow: var(--box-shadow);
-  transition: transform var(--transition-speed), box-shadow var(--transition-speed);
-  display: flex;
-  flex-direction: column;
 }
-.job-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 20px rgba(0,0,0,0.12);
-}
+
 .card-image {
-  height: 200px;
-  position: relative;
+  aspect-ratio: 4 / 3; /* Enforce a 4:3 aspect ratio for all images */
+  width: 100%;
 }
+
 .card-image img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  border-radius: var(--border-radius); /* Apply border-radius to the image itself */
 }
-.category-badge {
-  position: absolute;
-  top: var(--spacing-sm);
-  left: var(--spacing-sm);
-  background: rgba(255, 255, 255, 0.9);
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: 20px;
-  font-size: var(--font-size-sm);
-  font-weight: bold;
-  color: var(--color-text);
-}
+
 .card-content {
-  padding: var(--spacing-md);
-  display: flex;
-  flex-direction: column;
-  flex-grow: 1;
+  padding: var(--spacing-sm) 0; /* Remove horizontal padding */
 }
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: start;
-  margin-bottom: var(--spacing-sm);
-}
+
 .job-title {
-  margin: 0;
-  font-size: var(--font-size-lg);
-  color: var(--color-text);
+  font-size: 1rem; /* Slightly smaller for a cleaner look */
   font-weight: 600;
-  line-height: 1.4;
+  margin: 0 0 var(--spacing-xs);
 }
+
+.job-location {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-light);
+  margin: 0 0 var(--spacing-md);
+}
+
+.job-price-wrapper {
+  margin-top: auto; /* Push price to the bottom */
+}
+
 .job-price {
   font-weight: bold;
-  color: var(--color-text);
-  white-space: nowrap;
 }
-.job-location {
-  color: var(--color-text-light);
-  font-size: var(--font-size-sm);
-  margin: 0 0 var(--spacing-sm) 0;
+
+.empty-state {
+  text-align: center;
+  padding: var(--spacing-xxl) 0;
 }
-.job-desc {
-  color: var(--color-text-light);
-  font-size: var(--font-size-base);
-  line-height: 1.5;
-  margin-bottom: var(--spacing-lg);
-}
-.card-footer {
-  margin-top: auto;
-}
-.book-btn {
-  width: 100%;
-  background-color: var(--color-accent);
-}
-.book-btn:hover {
-  background-color: #3e8e41;
+.empty-state h2 {
+  margin-top: 0;
 }
 .error-message {
-  background-color: var(--color-error);
-  color: var(--color-text-inverted);
-  padding: var(--spacing-sm) var(--spacing-md);
-  border-radius: var(--border-radius);
   text-align: center;
+  padding: var(--spacing-lg);
+  color: var(--color-error);
 }
 </style>

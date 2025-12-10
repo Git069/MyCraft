@@ -16,7 +16,9 @@ urlpatterns = [
     # Djoser Auth URLs
     path('api/auth/', include('djoser.urls')),
     path('api/auth/', include('djoser.urls.authtoken')),
+    path('api/auth/', include('users.urls')), # For become-craftsman
 
     # App-specific URLs
     path("api/", include("jobs.urls")),
+    path("api/", include("chat.urls")), # New chat URLs
 ]

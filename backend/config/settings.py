@@ -36,12 +36,13 @@ INSTALLED_APPS = [
     "django_filters",
     "users",
     "jobs",
+    "chat", # New chat app
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
-    "corsheaders.middleware.CorsMiddleware", # Must be before CommonMiddleware
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -140,24 +141,5 @@ DJOSER = {
     'TOKEN_MODEL': 'rest_framework.authtoken.models.Token',
 }
 
-# --- CORS Configuration ---
-# Allow ALL origins for debugging.
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
-# Removed manual CORS_ALLOW_HEADERS to use defaults
-
-# --- Logging ---
-# This will print request info to the console
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-        },
-    },
-    'root': {
-        'handlers': ['console'],
-        'level': 'INFO',
-    },
-}

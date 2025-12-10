@@ -8,19 +8,14 @@ const apiClient = axios.create({
   },
 });
 
-// --- Axios Interceptor ---
-// This will run before every request and after every response.
 apiClient.interceptors.response.use(
-  (response) => response, // If the response is successful, just return it.
+  (response) => response,
   (error) => {
-    // If the server responds with 401 Unauthorized
     if (error.response && error.response.status === 401) {
       const authStore = useAuthStore();
-      authStore.logout(); // Trigger the logout action
-      // Redirect to login page
+      authStore.logout();
       window.location.href = '/login'; 
     }
-    // Return any other errors so they can be handled by the component.
     return Promise.reject(error);
   }
 );
@@ -29,25 +24,40 @@ export default {
   register(userData) {
     return apiClient.post('/auth/users/', userData);
   },
-
   login(credentials) {
     return apiClient.post('/auth/token/login/', credentials);
   },
-
   fetchCurrentUser() {
     return apiClient.get('/auth/users/me/');
   },
-
   createJob(jobData) {
     return apiClient.post('/jobs/', jobData);
   },
-
   getJobs(params) {
     return apiClient.get('/jobs/', { params });
   },
-
+  getJobDetails(jobId) {
+    return apiClient.get(`/jobs/${jobId}/`);
+  },
+  bookJob(jobId) {
+    return apiClient.post(`/jobs/${jobId}/book/`);
+  },
   becomeCraftsman() {
     return apiClient.post('/auth/become-craftsman/');
+  },
+  
+  // --- NEW CHAT API FUNCTIONS ---
+  getConversations() {
+    return apiClient.get('/conversations/');
+  },
+  getConversationDetails(convoId) {
+    return apiClient.get(`/conversations/${convoId}/`);
+  },
+  startConversation(jobId, message) {
+    return apiClient.post('/conversations/', { job_id: jobId, message: message });
+  },
+  postMessage(convoId, content) {
+    return apiClient.post(`/conversations/${convoId}/post_message/`, { content: content });
   },
 
   setAuthToken(token) {
@@ -55,7 +65,6 @@ export default {
       apiClient.defaults.headers.common['Authorization'] = `Token ${token}`;
     }
   },
-
   clearAuthToken() {
     delete apiClient.defaults.headers.common['Authorization'];
   },

@@ -1,5 +1,5 @@
 <script setup>
-// No script logic needed for this static view, but keeping the setup for future use.
+import JobSearch from '@/components/JobSearch.vue'; // Import the new component
 </script>
 
 <template>
@@ -9,14 +9,10 @@
       <div class="container">
         <h1 class="hero-title">Finde die besten Handwerker. Oder die besten Aufträge.</h1>
         <p class="hero-subtitle">MyCraft verbindet talentierte Handwerker mit den passenden Projekten in deiner Nähe.</p>
-        <div class="hero-actions">
-          <router-link :to="{ name: 'JobMarketplace' }" class="base-button primary-action">
-            Aufträge entdecken
-          </router-link>
-          <router-link :to="{ name: 'Register' }" class="base-button secondary-action">
-            Jetzt registrieren
-          </router-link>
-        </div>
+
+        <!-- Integrate the search bar here -->
+        <JobSearch />
+
       </div>
     </header>
 
@@ -25,19 +21,16 @@
       <div class="container text-center">
         <h2 class="section-title">So einfach funktioniert's</h2>
         <div class="steps-grid">
-          <!-- Step 1 -->
           <div class="step-card">
             <div class="step-icon">1</div>
             <h3 class="step-title">Konto erstellen</h3>
             <p>Registriere dich kostenlos als Auftraggeber oder Handwerker.</p>
           </div>
-          <!-- Step 2 -->
           <div class="step-card">
             <div class="step-icon">2</div>
             <h3 class="step-title">Auftrag finden oder erstellen</h3>
             <p>Durchsuche den Marktplatz oder stelle dein eigenes Projekt online.</p>
           </div>
-          <!-- Step 3 -->
           <div class="step-card">
             <div class="step-icon">3</div>
             <h3 class="step-title">Verbinden & loslegen</h3>
@@ -58,7 +51,7 @@
   padding: var(--spacing-xxl) 0;
   background-color: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
-  min-height: 50vh;
+  min-height: 60vh; /* Increased height for more impact */
 }
 
 .hero-title {
@@ -79,34 +72,6 @@
   max-width: 650px;
   margin-left: auto;
   margin-right: auto;
-}
-
-.hero-actions {
-  display: flex;
-  justify-content: center;
-  gap: var(--spacing-md);
-  flex-wrap: wrap;
-}
-
-.primary-action {
-  background-color: var(--color-primary);
-  font-size: var(--font-size-lg);
-  padding: var(--spacing-md) var(--spacing-xl);
-}
-.primary-action:hover {
-  background-color: var(--color-primary-dark);
-}
-
-.secondary-action {
-  background-color: transparent;
-  color: var(--color-primary);
-  border: 2px solid var(--color-primary);
-  font-size: var(--font-size-lg);
-  padding: var(--spacing-md) var(--spacing-xl);
-}
-.secondary-action:hover {
-  background-color: var(--color-primary);
-  color: var(--color-text-inverted);
 }
 
 /* --- HOW IT WORKS SECTION --- */
