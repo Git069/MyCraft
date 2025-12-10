@@ -1,109 +1,106 @@
 <script setup>
-import { RouterLink, RouterView } from 'vue-router'
-// NEU: Importieren Sie Ihr Logo direkt. Der Alias @ steht für den 'src/' Ordner.
-import AppLogo from '@/assets/logo.svg' 
+import { RouterLink, RouterView, useRouter } from 'vue-router'
+import AppLogo from '@/assets/logo.svg'
+import { useAuthStore } from '@/stores/auth'
+import { computed } from 'vue';
+
+const authStore = useAuthStore();
+const router = useRouter();
+
+const isLoggedIn = computed(() => authStore.isLoggedIn);
+
+const handleLogout = () => {
+  authStore.logout();
+  router.push({ name: 'Home' }); // Redirect to home page after logout
+};
 </script>
 
 <template>
-  <!-- Die gesamte Navigation wird in den <header> verlagert -->
-  <header>
-    <div class="nav-container">
-      
-      <!-- 1. Logo-Bereich (ersetzt den "Home"-Link) -->
-      <!-- <RouterLink> sorgt dafür, dass ein Klick zur Startseite navigiert -->
-      <RouterLink to="/" class="logo-link">
-        <!-- NEU: Das Logo wird als Bild angezeigt, Pfad kommt vom Import -->
-        <img :src="AppLogo" alt="App Logo" class="logo-image" />
+  <header class="main-header">
+    <div class="container nav-container">
+      <RouterLink :to="{ name: 'Home' }" class="logo-link">
+        <img :src="AppLogo" alt="MyCraft Logo" class="logo-image" />
       </RouterLink>
-      
-      <!-- 2. Navigations-Links (rechtsbündig) -->
+
       <nav class="nav-links">
-        <!-- Der "Home"-Link wurde entfernt -->
-        <RouterLink to="/login">Login</RouterLink>
-        <RouterLink to="/register">Registrieren</RouterLink>
+        <RouterLink :to="{ name: 'JobMarketplace' }">Aufträge</RouterLink>
+
+        <template v-if="!isLoggedIn">
+          <RouterLink :to="{ name: 'Login' }">Login</RouterLink>
+          <RouterLink :to="{ name: 'Register' }">Registrieren</RouterLink>
+        </template>
+
+        <template v-else>
+          <RouterLink :to="{ name: 'CreateJob' }">Auftrag erstellen</RouterLink>
+          <button @click="handleLogout" class="base-button logout-button">Logout</button>
+        </template>
       </nav>
-      
     </div>
   </header>
 
-  <!-- Der RouterView, der den Inhalt der aktuellen Seite anzeigt -->
   <RouterView />
 </template>
 
 <style scoped>
-/* -------------------------------------------------------------------------- */
-/* 1. LAYOUT DES CONTAINERS (Flexbox)                                         */
-/* -------------------------------------------------------------------------- */
-header {
-  /* Stellt sicher, dass die Kopfzeile die volle Breite einnimmt */
+.main-header {
   width: 100%;
-  /* Optional: Hintergrundfarbe für die Navigationsleiste */
-  background-color: #ffffff; 
-  /* Optional: Leichte Trennlinie unten */
-  border-bottom: 1px solid #eeeeee;
+  background-color: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  padding: var(--spacing-sm) 0;
 }
 
-/* Der innere Container, der die linke und rechte Seite steuert */
 .nav-container {
-  /* Verwendet Flexbox für die Aufteilung */
   display: flex;
-  
-  /* Ordnet Logo links und Links rechts an (wichtigste Regel!) */
-  justify-content: space-between; 
-  
-  /* Zentriert die Elemente vertikal */
-  align-items: center; 
-  
-  /* Fügt vertikales Padding hinzu (Abstand oben/unten) */
-  padding: 10px 0;
-  
-  /* Wichtig: Nutzt den globalen Rand-Abstand nur intern */
-  /* Wir nutzen hier die gleiche Logik wie in PublicStyles.css für den body, 
-     aber limitieren die Breite, falls Sie den Inhalt zentrieren möchten. */
-  max-width: 1200px; /* Maximale Breite des Navigationsinhalts */
-  margin: 0 auto;    /* Zentrierung des Navigationsinhalts */
+  justify-content: space-between;
+  align-items: center;
 }
 
-/* -------------------------------------------------------------------------- */
-/* 2. LOGO-STYLING (NEU)                                                      */
-/* -------------------------------------------------------------------------- */
 .logo-link {
-  text-decoration: none; 
-  /* Stellt sicher, dass das Logo und der Link flexibel sind */
-  display: flex; 
+  text-decoration: none;
+  display: flex;
   align-items: center;
 }
 
 .logo-image {
-  /* NEU: Definieren Sie eine feste Höhe, damit das Logo im Nav-Bereich Platz hat */
-  height: clamp(90px, 3vw, 120px); /* Skaliert zwischen 30px und 45px je nach Viewport-Breite */
+  height: 45px;
   width: auto;
 }
 
-/* -------------------------------------------------------------------------- */
-/* 3. NAVIGATIONS-LINKS STYLING                                               */
-/* -------------------------------------------------------------------------- */
 .nav-links {
   display: flex;
-  gap: 15px; /* Abstand zwischen den Links */
+  gap: var(--spacing-md);
+  align-items: center;
 }
 
 .nav-links a {
-  /* Entfernt die Unterstreichung */
-  text-decoration: none; 
-  color: #495057;
+  text-decoration: none;
+  color: var(--color-text);
   font-weight: 500;
-  padding: 5px 10px; /* Kleiner Innenabstand für Hover-Effekt */
-  transition: color 0.2s;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  transition: color var(--transition-speed);
 }
 
 .nav-links a:hover,
 .nav-links a.router-link-exact-active {
-  color: #007bff; /* Farbe bei Hover oder aktiver Route */
+  color: var(--color-primary);
 }
 
-/* Entfernt den alten .wrapper, da wir .nav-container verwenden */
-.wrapper {
-  display: none;
+.logout-button {
+  background-color: var(--color-error);
+  color: var(--color-text-inverted);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-size: var(--font-size-base);
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: background-color var(--transition-speed);
+}
+
+.logout-button:hover {
+  background-color: #c82333;
+}
+
+.nav-container.container {
+  padding-left: var(--spacing-md);
+  padding-right: var(--spacing-md);
 }
 </style>

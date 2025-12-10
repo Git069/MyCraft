@@ -1,6 +1,6 @@
 import axios from 'axios';
+import { useAuthStore } from '@/stores/auth';
 
-// Create a new axios instance with a custom configuration
 const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
   headers: {
@@ -8,55 +8,55 @@ const apiClient = axios.create({
   },
 });
 
-/**
- * A central place for all API calls.
- */
+// --- Axios Interceptor ---
+// This will run before every request and after every response.
+apiClient.interceptors.response.use(
+  (response) => response, // If the response is successful, just return it.
+  (error) => {
+    // If the server responds with 401 Unauthorized
+    if (error.response && error.response.status === 401) {
+      const authStore = useAuthStore();
+      authStore.logout(); // Trigger the logout action
+      // Redirect to login page
+      window.location.href = '/login'; 
+    }
+    // Return any other errors so they can be handled by the component.
+    return Promise.reject(error);
+  }
+);
+
 export default {
-  /**
-   * Registers a new user.
-   * @param {object} userData - The user's data (e.g., username, email, password).
-   * @returns {Promise<object>} The response data from the server.
-   */
   register(userData) {
     return apiClient.post('/auth/users/', userData);
   },
 
-  /**
-   * Logs in a user.
-   * @param {object} credentials - The user's credentials (username, password).
-   * @returns {Promise<object>} The response data from the server, containing the auth token.
-   */
   login(credentials) {
     return apiClient.post('/auth/token/login/', credentials);
   },
 
-  /**
-   * Saves the auth token to localStorage and sets it on the axios instance.
-   * @param {string} token - The authentication token.
-   */
+  fetchCurrentUser() {
+    return apiClient.get('/auth/users/me/');
+  },
+
+  createJob(jobData) {
+    return apiClient.post('/jobs/', jobData);
+  },
+
+  getJobs(params) {
+    return apiClient.get('/jobs/', { params });
+  },
+
+  becomeCraftsman() {
+    return apiClient.post('/auth/become-craftsman/');
+  },
+
   setAuthToken(token) {
     if (token) {
-      localStorage.setItem('authToken', token);
       apiClient.defaults.headers.common['Authorization'] = `Token ${token}`;
     }
   },
 
-  /**
-   * Removes the auth token from localStorage and the axios instance.
-   */
   clearAuthToken() {
-    localStorage.removeItem('authToken');
     delete apiClient.defaults.headers.common['Authorization'];
   },
-
-  /**
-   * Checks for an existing token and sets it on the axios instance.
-   * To be called when the app starts.
-   */
-  initialize() {
-    const token = localStorage.getItem('authToken');
-    if (token) {
-      this.setAuthToken(token);
-    }
-  }
 };

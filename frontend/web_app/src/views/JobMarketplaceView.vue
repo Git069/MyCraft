@@ -1,12 +1,33 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue';
-import axios from 'axios';
+import { ref, onMounted } from 'vue';
+import api from '@/api'; // Import the centralized API service
 
 const jobs = ref([]);
 const loading = ref(true);
+const error = ref(null);
 
-const apiUrl = import.meta.env.VITE_API_URL;
+// --- API Call ---
+const fetchJobs = async () => {
+  loading.value = true;
+  error.value = null;
+  try {
+    // Fetch only open jobs from the backend
+    const response = await api.getJobs({ status: 'OPEN' });
+    // The backend now returns a paginated response
+    jobs.value = response.data.results;
+  } catch (err) {
+    error.value = "Fehler beim Laden der Aufträge.";
+    console.error(err);
+  } finally {
+    loading.value = false;
+  }
+};
 
+onMounted(() => {
+  fetchJobs();
+});
+
+// Helper functions and tradeImages remain the same...
 const tradeImages = {
   PLUMBER: 'https://images.unsplash.com/photo-1581244277943-fe4a9c777189?auto=format&fit=crop&w=400&q=80',
   ELECTRICIAN: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=400&q=80',
@@ -15,45 +36,23 @@ const tradeImages = {
   GARDENER: 'https://images.unsplash.com/photo-1558904541-efa843a96f01?auto=format&fit=crop&w=400&q=80',
   OTHER: 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?auto=format&fit=crop&w=400&q=80'
 };
-
 const formatPrice = (price) => {
   return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(price);
 };
-
-const fetchJobs = async () => {
-  try {
-    const response = await axios.get(`${apiUrl}/jobs/`);
-    jobs.value = response.data;
-  } catch (error) {
-    console.error("Fehler beim Laden:", error);
-  } finally {
-    loading.value = false;
-  }
-};
-
-const availableJobs = computed(() => {
-  return jobs.value.filter(job => job.status === 'OPEN');
-});
-
-onMounted(() => {
-  fetchJobs();
-});
 </script>
 
 <template>
-  <!-- Use the global .container utility class -->
   <div class="container">
-
-    <!-- Use the global .text-center utility class -->
     <header class="market-header text-center">
       <h1>Offene Aufträge finden</h1>
-      <p>Wähle aus {{ availableJobs.length }} verfügbaren Handwerksaufträgen</p>
+      <p v-if="!loading">Wähle aus {{ jobs.length }} verfügbaren Handwerksaufträgen</p>
     </header>
 
     <div v-if="loading" class="loading-state">Lade Angebote...</div>
+    <div v-if="error" class="error-message">{{ error }}</div>
 
-    <div v-else class="jobs-grid">
-      <article v-for="job in availableJobs" :key="job.id" class="job-card">
+    <div v-if="!loading && !error" class="jobs-grid">
+      <article v-for="job in jobs" :key="job.id" class="job-card">
         <div class="card-image">
           <img :src="tradeImages[job.trade] || tradeImages.OTHER" alt="Gewerk Bild" />
           <span class="category-badge">{{ job.trade }}</span>
@@ -66,7 +65,6 @@ onMounted(() => {
           <p class="job-location">📍 {{ job.zip_code }} {{ job.city }}</p>
           <p class="job-desc">{{ job.description.substring(0, 80) }}...</p>
           <div class="card-footer">
-            <!-- Use the global .base-button class -->
             <button class="base-button book-btn">Details ansehen</button>
           </div>
         </div>
@@ -76,52 +74,44 @@ onMounted(() => {
 </template>
 
 <style scoped>
-/* --- HEADER --- */
+/* Styles remain the same */
 .market-header {
-  margin-bottom: var(--spacing-xxl); /* Use spacing token */
+  margin-bottom: var(--spacing-xxl);
 }
 .market-header h1 {
-  color: var(--color-text); /* Use color token */
+  color: var(--color-text);
 }
 .market-header p {
-  color: var(--color-text-light); /* Use color token */
+  color: var(--color-text-light);
   font-size: var(--font-size-lg);
 }
-
-/* --- GRID SYSTEM --- */
 .jobs-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: var(--spacing-lg); /* Use spacing token */
+  gap: var(--spacing-lg);
 }
-
-/* --- CARD DESIGN --- */
 .job-card {
-  background: var(--color-surface); /* Use color token */
-  border-radius: var(--border-radius); /* Use border-radius token */
+  background: var(--color-surface);
+  border-radius: var(--border-radius);
   overflow: hidden;
-  box-shadow: var(--box-shadow); /* Use box-shadow token */
+  box-shadow: var(--box-shadow);
   transition: transform var(--transition-speed), box-shadow var(--transition-speed);
   display: flex;
   flex-direction: column;
 }
-
 .job-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 12px 20px rgba(0,0,0,0.12); /* Keep a slightly stronger hover shadow */
+  box-shadow: 0 12px 20px rgba(0,0,0,0.12);
 }
-
 .card-image {
   height: 200px;
   position: relative;
 }
-
 .card-image img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
-
 .category-badge {
   position: absolute;
   top: var(--spacing-sm);
@@ -133,21 +123,18 @@ onMounted(() => {
   font-weight: bold;
   color: var(--color-text);
 }
-
 .card-content {
-  padding: var(--spacing-md); /* Use spacing token */
+  padding: var(--spacing-md);
   display: flex;
   flex-direction: column;
   flex-grow: 1;
 }
-
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: start;
-  margin-bottom: var(--spacing-sm); /* Use spacing token */
+  margin-bottom: var(--spacing-sm);
 }
-
 .job-title {
   margin: 0;
   font-size: var(--font-size-lg);
@@ -155,44 +142,37 @@ onMounted(() => {
   font-weight: 600;
   line-height: 1.4;
 }
-
 .job-price {
   font-weight: bold;
   color: var(--color-text);
   white-space: nowrap;
 }
-
 .job-location {
   color: var(--color-text-light);
   font-size: var(--font-size-sm);
   margin: 0 0 var(--spacing-sm) 0;
 }
-
 .job-desc {
   color: var(--color-text-light);
   font-size: var(--font-size-base);
   line-height: 1.5;
   margin-bottom: var(--spacing-lg);
 }
-
 .card-footer {
   margin-top: auto;
 }
-
-/* --- BUTTON OVERRIDE --- */
-/* Extend the .base-button, but give it a specific background color */
 .book-btn {
   width: 100%;
-  background-color: var(--color-accent); /* Use accent color from tokens */
+  background-color: var(--color-accent);
 }
 .book-btn:hover {
-  background-color: #3e8e41; /* A darker version of the accent color */
+  background-color: #3e8e41;
 }
-
-/* --- RESPONSIVE --- */
-@media (max-width: 600px) {
-  .jobs-grid {
-    grid-template-columns: 1fr;
-  }
+.error-message {
+  background-color: var(--color-error);
+  color: var(--color-text-inverted);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--border-radius);
+  text-align: center;
 }
 </style>

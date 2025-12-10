@@ -3,7 +3,6 @@ import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '@/api';
 
-// Reactive state for form inputs
 const email = ref('');
 const password = ref('');
 const password2 = ref('');
@@ -16,7 +15,6 @@ const handleRegister = async () => {
   errorMessage.value = '';
   isLoading.value = true;
 
-  // --- Client-side validation ---
   if (!email.value || !password.value || !password2.value) {
     errorMessage.value = 'Bitte füllen Sie alle Felder aus.';
     isLoading.value = false;
@@ -29,23 +27,24 @@ const handleRegister = async () => {
   }
 
   try {
-    // --- API Call: Use email for both username and email ---
+    // --- API Call: Add re_password to the payload ---
     await api.register({
-      username: email.value, // Send email as username
+      username: email.value,
       email: email.value,
       password: password.value,
+      re_password: password2.value, // This is what Djoser expects
     });
 
-    // On success, redirect to the login page with a success message
     router.push({ name: 'Login', query: { registered: 'true' } });
 
   } catch (error) {
     if (error.response && error.response.data) {
       const errors = error.response.data;
       const firstErrorKey = Object.keys(errors)[0];
-      // Make error message more user-friendly
       if (firstErrorKey === 'username') {
         errorMessage.value = 'Ein Benutzer mit dieser E-Mail-Adresse existiert bereits.';
+      } else if (firstErrorKey === 'password' || firstErrorKey === 're_password') {
+        errorMessage.value = `Passwort-Fehler: ${errors[firstErrorKey][0]}`;
       } else {
         errorMessage.value = `${firstErrorKey}: ${errors[firstErrorKey][0]}`;
       }
@@ -103,7 +102,7 @@ const handleRegister = async () => {
 </template>
 
 <style scoped>
-/* Styles are identical to the previous version, just without the username field */
+/* Styles remain the same */
 .register-container {
   display: flex;
   justify-content: center;

@@ -1,8 +1,8 @@
 from django.urls import path
-from .views import RegisterView
-# Importieren Sie auch LoginView, etc., wenn Sie diese später hinzufügen
+
+# This file is no longer needed as Djoser handles user-related URLs.
+# You can use this file for custom user-related URLs in the future.
 
 urlpatterns = [
-    path('register/', RegisterView.as_view(), name='register'),
-    # path('login/', LoginView.as_view(), name='login'),
+    # e.g., path('profile/', MyProfileView.as_view(), name='my-profile'),
 ]

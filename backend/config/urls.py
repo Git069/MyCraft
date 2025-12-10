@@ -4,7 +4,7 @@ URL configuration for the MyCraft project.
 
 from django.contrib import admin
 from django.urls import path, include
-from .views import api_root  # Import the new view
+from .views import api_root
 
 urlpatterns = [
     # API Root
@@ -13,7 +13,10 @@ urlpatterns = [
     # Admin Site
     path("admin/", admin.site.urls),
 
+    # Djoser Auth URLs
+    path('api/auth/', include('djoser.urls')),
+    path('api/auth/', include('djoser.urls.authtoken')),
+
     # App-specific URLs
-    path("api/auth/", include("users.urls")),
     path("api/", include("jobs.urls")),
 ]

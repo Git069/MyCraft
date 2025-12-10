@@ -1,10 +1,9 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import api from '@/api';
+import { useAuthStore } from '@/stores/auth';
 
-// Reactive state for form inputs
-const email = ref(''); // The user enters their email
+const email = ref('');
 const password = ref('');
 const errorMessage = ref('');
 const successMessage = ref('');
@@ -12,8 +11,8 @@ const isLoading = ref(false);
 
 const router = useRouter();
 const route = useRoute();
+const authStore = useAuthStore();
 
-// Check for success message from registration
 onMounted(() => {
   if (route.query.registered === 'true') {
     successMessage.value = 'Registrierung erfolgreich! Bitte melde dich an.';
@@ -32,25 +31,21 @@ const handleLogin = async () => {
   }
 
   try {
-    // --- API Call: Send email as username ---
-    const response = await api.login({
-      username: email.value, // The backend expects a 'username' field
+    // Call the login action from the auth store
+    await authStore.login({
+      username: email.value,
       password: password.value,
     });
 
-    const token = response.data.auth_token;
-    if (token) {
-      api.setAuthToken(token);
-      router.push({ name: 'JobMarketplace' });
-    } else {
-      throw new Error('Kein Token erhalten.');
-    }
+    // Redirect on success
+    router.push({ name: 'JobMarketplace' });
 
   } catch (error) {
-    if (error.response && error.response.data) {
+    // The store action throws an error on failure, which we catch here
+    if (error.response && error.response.status === 400) {
       errorMessage.value = 'Anmeldedaten sind ungültig. Bitte versuchen Sie es erneut.';
     } else {
-      errorMessage.value = 'Ein unbekannter Fehler ist aufgetreten.';
+      errorMessage.value = 'Ein Server-Fehler ist aufgetreten. Bitte versuchen Sie es später erneut.';
     }
     console.error('Login failed:', error);
   } finally {
@@ -75,7 +70,6 @@ const handleLogin = async () => {
           {{ errorMessage }}
         </div>
 
-        <!-- Email Input -->
         <div class="form-group">
           <label for="email">E-Mail-Adresse</label>
           <input
@@ -87,7 +81,6 @@ const handleLogin = async () => {
           />
         </div>
 
-        <!-- Password Input -->
         <div class="form-group">
           <label for="password">Passwort</label>
           <input
@@ -116,7 +109,7 @@ const handleLogin = async () => {
 </template>
 
 <style scoped>
-/* Styles are identical to the previous version, just with email instead of username */
+/* Styles remain the same */
 .login-container {
   display: flex;
   justify-content: center;
