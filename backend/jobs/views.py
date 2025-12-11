@@ -18,24 +18,29 @@ class JobViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
     def my_jobs(self, request):
+        """ Returns jobs created by the current user (craftsman). """
         my_jobs_queryset = Job.objects.filter(contractor=request.user)
         serializer = self.get_serializer(my_jobs_queryset, many=True)
         return Response(serializer.data)
 
-    # --- NEW: Book Job Action ---
+    @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
+    def my_bookings(self, request):
+        """ Returns jobs booked by the current user (client). """
+        my_bookings_queryset = Job.objects.filter(client=request.user)
+        serializer = self.get_serializer(my_bookings_queryset, many=True)
+        return Response(serializer.data)
+
     @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
     def book(self, request, pk=None):
         job = self.get_object()
         user = request.user
 
-        # --- Validation ---
         if job.status != 'OPEN':
             return Response({'detail': 'This job is no longer available.'}, status=status.HTTP_400_BAD_REQUEST)
         
         if job.contractor == user:
             return Response({'detail': 'You cannot book your own job.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # --- Logic ---
         job.client = user
         job.status = 'BOOKED'
         job.save()

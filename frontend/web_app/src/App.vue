@@ -78,7 +78,6 @@ onUnmounted(() => {
               <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="presentation" focusable="false" style="display: block; fill: none; height: 16px; width: 16px; stroke: currentcolor; stroke-width: 3; overflow: visible;"><g fill="none"><path d="m2 16h28"></path><path d="m2 24h28"></path><path d="m2 8h28"></path></g></svg>
             </div>
 
-            <!-- Avatar: Show image if available, otherwise show placeholder -->
             <div class="avatar">
               <img v-if="fullImageUrl" :src="fullImageUrl" alt="Profile Picture" class="avatar-image" />
               <div v-else class="avatar-placeholder">
@@ -89,11 +88,14 @@ onUnmounted(() => {
 
           <div v-if="isMenuOpen" class="dropdown-menu">
             <template v-if="isLoggedIn">
-              <RouterLink :to="{ name: 'Profile' }" class="menu-item bold" @click="isMenuOpen = false">
-                Profil
+              <RouterLink :to="{ name: 'Dashboard' }" class="menu-item bold" @click="isMenuOpen = false">
+                Dashboard
               </RouterLink>
               <RouterLink :to="{ name: 'Inbox' }" class="menu-item" @click="isMenuOpen = false">
                 Nachrichten
+              </RouterLink>
+              <RouterLink :to="{ name: 'Profile' }" class="menu-item" @click="isMenuOpen = false">
+                Profil
               </RouterLink>
               <div class="divider"></div>
               <button class="menu-item logout-item" @click="handleLogout">Logout</button>
@@ -118,6 +120,7 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+/* Styles remain the same */
 .main-header {
   height: 80px;
   background-color: white;

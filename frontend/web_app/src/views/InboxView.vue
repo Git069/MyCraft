@@ -1,9 +1,11 @@
 <script setup>
 import { ref, onMounted, computed, nextTick, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import api from '@/api';
 import { useAuthStore } from '@/stores/auth';
 
 const authStore = useAuthStore();
+const route = useRoute();
 const conversations = ref([]);
 const activeConversation = ref(null);
 const loading = ref(true);
@@ -18,7 +20,11 @@ const fetchConversations = async () => {
   try {
     const response = await api.getConversations();
     conversations.value = response.data;
-    if (conversations.value.length > 0) {
+
+    const activeConvoId = parseInt(route.query.active_convo, 10);
+    if (activeConvoId && conversations.value.some(c => c.id === activeConvoId)) {
+      await selectConversation(activeConvoId);
+    } else if (conversations.value.length > 0) {
       await selectConversation(conversations.value[0].id);
     }
   } catch (err) {
@@ -32,7 +38,6 @@ const selectConversation = async (convoId) => {
   try {
     const response = await api.getConversationDetails(convoId);
     activeConversation.value = response.data;
-    scrollToBottom();
   } catch (err) {
     error.value = "Fehler beim Laden der Nachrichtendetails.";
   }
@@ -60,7 +65,6 @@ const scrollToBottom = async () => {
 watch(activeConversation, scrollToBottom, { deep: true });
 onMounted(fetchConversations);
 
-// Helper to get the other participant's username
 const getOtherParticipant = (convo) => {
   if (!convo || !currentUser.value) return 'Unbekannt';
   const other = convo.participants_details.find(p => p.id !== currentUser.value.id);
@@ -70,7 +74,7 @@ const getOtherParticipant = (convo) => {
 
 <template>
   <div class="inbox-layout">
-    <!-- 1. Conversation List (Left) -->
+    <!-- Conversation List -->
     <aside class="conversation-list-panel">
       <header class="panel-header">
         <h2>Posteingang</h2>
@@ -100,7 +104,7 @@ const getOtherParticipant = (convo) => {
       </ul>
     </aside>
 
-    <!-- 2. Chat Window (Center) -->
+    <!-- Chat Window -->
     <main class="chat-panel">
       <div v-if="!activeConversation" class="empty-chat-state">
         <div class="icon">💬</div>
@@ -132,7 +136,7 @@ const getOtherParticipant = (convo) => {
       </div>
     </main>
 
-    <!-- 3. Details Panel (Right) -->
+    <!-- Details Panel -->
     <aside class="details-panel">
       <div v-if="!activeConversation" class="empty-details"></div>
       <div v-else class="details-content">
@@ -155,15 +159,14 @@ const getOtherParticipant = (convo) => {
 </template>
 
 <style scoped>
-/* --- 1. LAYOUT STRUCTURE --- */
+/* Styles remain the same */
 .inbox-layout {
   display: grid;
-  grid-template-columns: 350px 1fr 300px; /* 3-column layout */
+  grid-template-columns: 350px 1fr 300px;
   height: calc(100vh - 80px);
   border-top: 1px solid var(--color-border);
   background: white;
 }
-
 .panel-header {
   padding: 16px 24px;
   border-bottom: 1px solid var(--color-border);
@@ -179,8 +182,6 @@ const getOtherParticipant = (convo) => {
   font-size: 0.8rem;
   color: var(--color-text-light);
 }
-
-/* --- 2. CONVERSATION LIST (LEFT) --- */
 .conversation-list-panel {
   border-right: 1px solid var(--color-border);
   display: flex;
@@ -198,7 +199,7 @@ const getOtherParticipant = (convo) => {
   gap: 12px;
   padding: 16px 24px;
   cursor: pointer;
-  border-left: 4px solid transparent; /* Placeholder for active state */
+  border-left: 4px solid transparent;
 }
 .conversation-card:hover {
   background-color: #f7f7f7;
@@ -238,8 +239,6 @@ const getOtherParticipant = (convo) => {
   text-overflow: ellipsis;
   margin: 4px 0 0 0;
 }
-
-/* --- 3. CHAT PANEL (CENTER) --- */
 .chat-panel {
   display: flex;
   flex-direction: column;
@@ -315,8 +314,6 @@ const getOtherParticipant = (convo) => {
   padding: 8px;
   color: var(--color-text-light);
 }
-
-/* --- 4. DETAILS PANEL (RIGHT) --- */
 .details-panel {
   border-left: 1px solid var(--color-border);
 }

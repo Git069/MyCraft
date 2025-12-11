@@ -3,7 +3,7 @@ import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import api from '@/api';
 import { useAuthStore } from '@/stores/auth';
-import DetailHighlight from '@/components/DetailHighlight.vue'; // Import the new component
+import DetailHighlight from '@/components/DetailHighlight.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -26,14 +26,21 @@ const canContact = computed(() => {
 
 const handleContact = async () => {
   if (!canContact.value) return;
+
   isStartingConversation.value = true;
   error.value = null;
   try {
     const initialMessage = `Hallo, ich interessiere mich für deinen Auftrag "${job.value.title}".`;
-    await api.startConversation(jobId, initialMessage);
-    router.push({ name: 'Inbox' });
+    const response = await api.startConversation(jobId, initialMessage);
+
+    const conversationId = response.data.id;
+
+    // Redirect to the inbox and pass the new conversation ID as a query param
+    router.push({ name: 'Inbox', query: { active_convo: conversationId } });
+
   } catch (err) {
     error.value = err.response?.data?.detail || "Konversation konnte nicht gestartet werden.";
+    console.error("Conversation start failed:", err);
   } finally {
     isStartingConversation.value = false;
   }
@@ -77,17 +84,14 @@ const heroImage = computed(() => {
 <template>
   <div class="container">
     <div v-if="loading" class="loading-state">Lade Auftragsdetails...</div>
-    <div v-if="error" class="error-message">{{ error }}</div>
+    <div v-if="error && !isStartingConversation" class="error-message">{{ error }}</div>
 
     <div v-if="job" class="detail-page-wrapper">
-      <!-- 1. Image Hero Section -->
       <div class="image-hero-section">
         <img :src="heroImage" alt="Job category image" class="hero-image" />
       </div>
 
-      <!-- 2. Main Content Grid -->
       <div class="main-content-grid">
-        <!-- Left Column -->
         <div class="left-column">
           <header class="job-header">
             <h1>{{ job.title }}</h1>
@@ -120,7 +124,6 @@ const heroImage = computed(() => {
           </section>
         </div>
 
-        <!-- Right Column (Sticky Sidebar) -->
         <div class="right-column">
           <aside class="action-card">
             <div class="price-header">
@@ -137,6 +140,8 @@ const heroImage = computed(() => {
               </div>
             </div>
 
+            <div v-if="error && isStartingConversation" class="error-message booking-error">{{ error }}</div>
+
             <footer class="action-footer">
               <p>Du gehst noch keine verbindliche Buchung ein.</p>
             </footer>
@@ -148,11 +153,10 @@ const heroImage = computed(() => {
 </template>
 
 <style scoped>
+/* Styles remain the same */
 .detail-page-wrapper {
   padding: var(--spacing-lg) 0;
 }
-
-/* --- 1. IMAGE HERO --- */
 .image-hero-section {
   width: 100%;
   max-height: 400px;
@@ -165,8 +169,6 @@ const heroImage = computed(() => {
   height: 100%;
   object-fit: cover;
 }
-
-/* --- 2. MAIN GRID LAYOUT --- */
 .main-content-grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -177,8 +179,6 @@ const heroImage = computed(() => {
     grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
   }
 }
-
-/* --- 3. LEFT COLUMN --- */
 .job-header h1 {
   font-size: 2rem;
   margin-top: 0;
@@ -188,12 +188,10 @@ const heroImage = computed(() => {
   font-size: 1rem;
   color: var(--color-text-light);
 }
-
 .divider {
   border-bottom: 1px solid var(--color-border);
   margin: var(--spacing-lg) 0;
 }
-
 .contractor-section {
   display: flex;
   align-items: center;
@@ -214,12 +212,10 @@ const heroImage = computed(() => {
   font-size: 0.9rem;
   color: var(--color-text-light);
 }
-
 .highlights-section {
   display: grid;
   gap: var(--spacing-lg);
 }
-
 .description-section h2 {
   font-size: 1.5rem;
   margin-top: 0;
@@ -229,8 +225,6 @@ const heroImage = computed(() => {
   line-height: 1.7;
   white-space: pre-wrap;
 }
-
-/* --- 4. RIGHT COLUMN (ACTION CARD) --- */
 .right-column {
   position: relative;
 }
@@ -240,12 +234,9 @@ const heroImage = computed(() => {
   border-radius: 12px;
   padding: var(--spacing-lg);
   box-shadow: 0 6px 16px rgba(0,0,0,0.12);
-
-  /* Sticky behavior */
   position: sticky;
-  top: 100px; /* 80px header + 20px space */
+  top: 100px;
 }
-
 .price-header {
   display: flex;
   align-items: baseline;
@@ -259,20 +250,17 @@ const heroImage = computed(() => {
 .price-label {
   color: var(--color-text-light);
 }
-
 .primary-action {
   width: 100%;
   font-size: 1rem;
   padding: 12px;
 }
-
 .action-footer {
   text-align: center;
   font-size: 0.8rem;
   color: var(--color-text-light);
   margin-top: var(--spacing-md);
 }
-
 .login-prompt {
   text-align: center;
   padding: var(--spacing-sm) var(--spacing-md);
@@ -282,5 +270,13 @@ const heroImage = computed(() => {
 }
 .login-prompt a {
   font-weight: bold;
+}
+.error-message {
+  background-color: #fff0f0;
+  color: var(--color-error);
+  padding: 12px;
+  border-radius: 8px;
+  margin-top: 1rem;
+  text-align: center;
 }
 </style>
