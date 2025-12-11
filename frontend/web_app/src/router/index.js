@@ -7,7 +7,8 @@ import CreateJobView from '@/views/CreateJobView.vue'
 import JobMarketplaceView from '@/views/JobMarketplaceView.vue'
 import BecomeCraftsmanView from '@/views/BecomeCraftsmanView.vue'
 import JobDetailView from '@/views/JobDetailView.vue'
-import InboxView from '@/views/InboxView.vue' // Import the new view
+import InboxView from '@/views/InboxView.vue'
+import ProfileView from '@/views/ProfileView.vue' // Import the new view
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -29,11 +30,17 @@ const router = createRouter({
       component: BecomeCraftsmanView, 
       meta: { requiresAuth: true } 
     },
-    // New Inbox route
     { 
       path: '/inbox', 
       name: 'Inbox', 
       component: InboxView, 
+      meta: { requiresAuth: true } 
+    },
+    // New Profile route
+    { 
+      path: '/profile', 
+      name: 'Profile', 
+      component: ProfileView,
       meta: { requiresAuth: true } 
     },
   ],

@@ -30,6 +30,16 @@ export default {
   fetchCurrentUser() {
     return apiClient.get('/auth/users/me/');
   },
+  updateUser(userData) {
+    return apiClient.patch('/auth/users/me/', userData);
+  },
+  uploadProfilePicture(formData) {
+    return apiClient.patch('/auth/upload-profile-picture/', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
   createJob(jobData) {
     return apiClient.post('/jobs/', jobData);
   },
@@ -42,11 +52,9 @@ export default {
   bookJob(jobId) {
     return apiClient.post(`/jobs/${jobId}/book/`);
   },
-  becomeCraftsman() {
-    return apiClient.post('/auth/become-craftsman/');
+  becomeCraftsman(profileData) {
+    return apiClient.post('/auth/become-craftsman/', profileData);
   },
-  
-  // --- NEW CHAT API FUNCTIONS ---
   getConversations() {
     return apiClient.get('/conversations/');
   },
@@ -59,7 +67,6 @@ export default {
   postMessage(convoId, content) {
     return apiClient.post(`/conversations/${convoId}/post_message/`, { content: content });
   },
-
   setAuthToken(token) {
     if (token) {
       apiClient.defaults.headers.common['Authorization'] = `Token ${token}`;

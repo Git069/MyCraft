@@ -1,8 +1,7 @@
 from django.urls import path
-
-# This file is no longer needed as Djoser handles user-related URLs.
-# You can use this file for custom user-related URLs in the future.
+from .views import BecomeCraftsmanView, ProfilePictureUploadView
 
 urlpatterns = [
-    # e.g., path('profile/', MyProfileView.as_view(), name='my-profile'),
+    path('become-craftsman/', BecomeCraftsmanView.as_view(), name='become-craftsman'),
+    path('upload-profile-picture/', ProfilePictureUploadView.as_view(), name='upload-profile-picture'),
 ]
