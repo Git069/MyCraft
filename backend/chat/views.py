@@ -2,9 +2,9 @@ from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
-from .models import Conversation, Message
+from .models import Conversation, Message, Offer
 from jobs.models import Job
-from .serializers import ConversationListSerializer, ConversationDetailSerializer, MessageSerializer
+from .serializers import ConversationListSerializer, ConversationDetailSerializer, MessageSerializer, OfferSerializer
 
 class ConversationViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
@@ -17,7 +17,7 @@ class ConversationViewSet(viewsets.ModelViewSet):
             return ConversationListSerializer
         if self.action == 'retrieve':
             return ConversationDetailSerializer
-        return ConversationListSerializer # Default for create etc.
+        return ConversationListSerializer
 
     def create(self, request, *args, **kwargs):
         job_id = request.data.get('job_id')
@@ -65,3 +65,77 @@ class ConversationViewSet(viewsets.ModelViewSet):
         
         serializer = MessageSerializer(message)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+class OfferViewSet(viewsets.ViewSet):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def create(self, request):
+        conversation_id = request.data.get('conversation_id')
+        price = request.data.get('price')
+        description = request.data.get('description')
+        user = request.user
+
+        if not user.profile.is_craftsman:
+            raise PermissionDenied("Only craftsmen can create offers.")
+
+        try:
+            conversation = Conversation.objects.get(id=conversation_id, participants=user)
+        except Conversation.DoesNotExist:
+            return Response({'detail': 'Conversation not found or you are not a participant.'}, status=status.HTTP_404_NOT_FOUND)
+
+        offer = Offer.objects.create(
+            conversation=conversation,
+            creator=user,
+            price=price,
+            description=description
+        )
+        
+        message = Message.objects.create(conversation=conversation, sender=user, offer=offer)
+        
+        serializer = MessageSerializer(message)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['post'])
+    def accept(self, request, pk=None):
+        user = request.user
+        try:
+            offer = Offer.objects.get(id=pk)
+        except Offer.DoesNotExist:
+            return Response({'detail': 'Offer not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Security check: The creator of the offer cannot accept it.
+        # Only the OTHER participant in the conversation can accept it.
+        if user == offer.creator:
+            raise PermissionDenied("You cannot accept your own offer.")
+            
+        if user not in offer.conversation.participants.all():
+             raise PermissionDenied("You are not a participant in this conversation.")
+
+        offer.status = 'ACCEPTED'
+        offer.save()
+        
+        job = offer.conversation.job
+        job.status = 'BOOKED'
+        job.client = user # The user who accepts becomes the client
+        job.price = offer.price
+        job.save()
+
+        return Response(OfferSerializer(offer).data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['post'])
+    def reject(self, request, pk=None):
+        user = request.user
+        try:
+            offer = Offer.objects.get(id=pk)
+        except Offer.DoesNotExist:
+            return Response({'detail': 'Offer not found.'}, status=status.HTTP_404_NOT_FOUND)
+        
+        if user == offer.creator:
+            raise PermissionDenied("You cannot reject your own offer.")
+
+        if user not in offer.conversation.participants.all():
+             raise PermissionDenied("You are not a participant in this conversation.")
+
+        offer.status = 'REJECTED'
+        offer.save()
+        return Response(OfferSerializer(offer).data, status=status.HTTP_200_OK)

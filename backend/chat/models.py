@@ -3,9 +3,6 @@ from django.contrib.auth.models import User
 from jobs.models import Job
 
 class Conversation(models.Model):
-    """
-    Represents a conversation between a client and a craftsman about a specific job.
-    """
     job = models.ForeignKey(Job, on_delete=models.CASCADE, related_name='conversations')
     participants = models.ManyToManyField(User, related_name='conversations')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -17,15 +14,31 @@ class Conversation(models.Model):
     def __str__(self):
         return f"Conversation about '{self.job.title}'"
 
+class Offer(models.Model):
+    STATUS_CHOICES = (
+        ('PENDING', 'Pending'),
+        ('ACCEPTED', 'Accepted'),
+        ('REJECTED', 'Rejected'),
+    )
+    conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name='offers')
+    creator = models.ForeignKey(User, on_delete=models.CASCADE)
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+    description = models.TextField(blank=True, null=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Offer {self.id} - {self.price} ({self.status})"
+
 class Message(models.Model):
-    """
-    Represents a single message within a conversation.
-    """
     conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name='messages')
     sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_messages')
-    content = models.TextField()
+    content = models.TextField(blank=True, null=True) # Content can be empty if it's just an offer container
     timestamp = models.DateTimeField(auto_now_add=True)
     is_read = models.BooleanField(default=False)
+    
+    # Link to an offer if this message represents one
+    offer = models.OneToOneField(Offer, on_delete=models.CASCADE, null=True, blank=True, related_name='message')
 
     class Meta:
         ordering = ['timestamp']

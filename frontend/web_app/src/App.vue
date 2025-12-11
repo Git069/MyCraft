@@ -3,7 +3,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { RouterLink, RouterView, useRouter } from 'vue-router';
 import AppLogo from '@/assets/logo.svg';
 import { useAuthStore } from '@/stores/auth';
-import ToastContainer from '@/components/ToastContainer.vue'; // Import ToastContainer
+import ToastContainer from '@/components/ToastContainer.vue';
 
 const authStore = useAuthStore();
 const router = useRouter();
@@ -48,11 +48,11 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <!-- Global Toast Container -->
   <ToastContainer />
 
   <header class="main-header">
-    <div class="container nav-container">
+    <!-- Use the new fluid container -->
+    <div class="container-fluid nav-container">
 
       <RouterLink :to="{ name: 'Home' }" class="logo-link">
         <img :src="AppLogo" alt="MyCraft Logo" class="logo-image" />
@@ -120,6 +120,7 @@ onUnmounted(() => {
     </div>
   </header>
 
+  <!-- The router-view will now be wrapped by a container in each specific view -->
   <RouterView />
 </template>
 

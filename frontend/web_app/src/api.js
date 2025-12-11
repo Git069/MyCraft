@@ -70,6 +70,18 @@ export default {
   postMessage(convoId, content) {
     return apiClient.post(`/conversations/${convoId}/post_message/`, { content: content });
   },
+  
+  // --- NEW OFFER API FUNCTIONS ---
+  createOffer(offerData) {
+    return apiClient.post('/offers/', offerData);
+  },
+  acceptOffer(offerId) {
+    return apiClient.post(`/offers/${offerId}/accept/`);
+  },
+  rejectOffer(offerId) {
+    return apiClient.post(`/offers/${offerId}/reject/`);
+  },
+
   getMyJobs() {
     return apiClient.get('/jobs/my_jobs/');
   },
