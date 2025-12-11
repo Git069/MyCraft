@@ -1,27 +1,23 @@
 from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from .models import Conversation, Message
 from jobs.models import Job
-from .serializers import ConversationSerializer, ConversationDetailSerializer, MessageSerializer
+from .serializers import ConversationListSerializer, ConversationDetailSerializer, MessageSerializer
 
 class ConversationViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        """
-        This view should return a list of all the conversations
-        for the currently authenticated user.
-        """
-        return self.request.user.conversations.prefetch_related('messages', 'participants').all()
+        return self.request.user.conversations.prefetch_related('messages', 'participants__profile').all()
 
     def get_serializer_class(self):
-        """
-        Return different serializers for list and detail views.
-        """
+        if self.action == 'list':
+            return ConversationListSerializer
         if self.action == 'retrieve':
             return ConversationDetailSerializer
-        return ConversationSerializer
+        return ConversationListSerializer # Default for create etc.
 
     def create(self, request, *args, **kwargs):
         job_id = request.data.get('job_id')
@@ -47,14 +43,17 @@ class ConversationViewSet(viewsets.ModelViewSet):
             content=initial_message
         )
 
-        serializer = ConversationDetailSerializer(conversation) # Return full detail on creation
+        serializer = ConversationDetailSerializer(conversation)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['post'])
     def post_message(self, request, pk=None):
         conversation = self.get_object()
-        content = request.data.get('content')
+        
+        if request.user not in conversation.participants.all():
+            raise PermissionDenied("You are not a participant in this conversation.")
 
+        content = request.data.get('content')
         if not content:
             return Response({'detail': 'Message content is required.'}, status=status.HTTP_400_BAD_REQUEST)
 

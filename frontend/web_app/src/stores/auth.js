@@ -52,12 +52,17 @@ export const useAuthStore = defineStore('auth', {
       }
     },
     async fetchUser() {
-      const userResponse = await api.fetchCurrentUser();
-      this.user = userResponse.data;
+      try {
+        const userResponse = await api.fetchCurrentUser();
+        this.user = userResponse.data;
+      } catch (error) {
+        console.error("Failed to fetch user data, logging out.", error);
+        this.logout();
+        throw error; // Re-throw so components know something went wrong
+      }
     },
     async becomeCraftsman() {
       await api.becomeCraftsman();
-      // Force-refresh user data to get the new 'is_craftsman' status
       await this.fetchUser();
     },
   },

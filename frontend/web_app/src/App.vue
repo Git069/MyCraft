@@ -3,6 +3,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { RouterLink, RouterView, useRouter } from 'vue-router';
 import AppLogo from '@/assets/logo.svg';
 import { useAuthStore } from '@/stores/auth';
+import ToastContainer from '@/components/ToastContainer.vue'; // Import ToastContainer
 
 const authStore = useAuthStore();
 const router = useRouter();
@@ -47,6 +48,9 @@ onUnmounted(() => {
 </script>
 
 <template>
+  <!-- Global Toast Container -->
+  <ToastContainer />
+
   <header class="main-header">
     <div class="container nav-container">
 

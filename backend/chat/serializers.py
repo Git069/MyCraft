@@ -3,10 +3,12 @@ from django.contrib.auth.models import User
 from .models import Conversation, Message
 from jobs.serializers import JobSerializer
 
+# A simple serializer for user details, used for nesting
 class ParticipantSerializer(serializers.ModelSerializer):
+    profile_picture = serializers.ImageField(source='profile.profile_picture', read_only=True)
     class Meta:
         model = User
-        fields = ['id', 'username', 'email']
+        fields = ['id', 'username', 'email', 'profile_picture']
 
 class MessageSerializer(serializers.ModelSerializer):
     sender_username = serializers.CharField(source='sender.username', read_only=True)
@@ -15,7 +17,11 @@ class MessageSerializer(serializers.ModelSerializer):
         model = Message
         fields = ['id', 'sender', 'sender_username', 'content', 'timestamp']
 
-class ConversationSerializer(serializers.ModelSerializer):
+class ConversationListSerializer(serializers.ModelSerializer):
+    """
+    A serializer for the list view of conversations.
+    Includes participant details and a preview of the last message.
+    """
     participants_details = ParticipantSerializer(source='participants', many=True, read_only=True)
     job_details = JobSerializer(source='job', read_only=True)
     last_message_preview = serializers.SerializerMethodField()
@@ -36,9 +42,13 @@ class ConversationSerializer(serializers.ModelSerializer):
             return last_message.content[:50]
         return None
 
-class ConversationDetailSerializer(ConversationSerializer):
+class ConversationDetailSerializer(ConversationListSerializer):
+    """
+    A more detailed serializer for a single conversation view, 
+    including all messages. Inherits from the list serializer.
+    """
     messages = MessageSerializer(many=True, read_only=True)
 
-    class Meta(ConversationSerializer.Meta):
+    class Meta(ConversationListSerializer.Meta):
         # Inherit all fields from the base serializer and add 'messages'
-        fields = ConversationSerializer.Meta.fields + ['messages']
+        fields = ConversationListSerializer.Meta.fields + ['messages']

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed, nextTick, watch } from 'vue';
+import { ref, onMounted, onUnmounted, computed, nextTick, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import api from '@/api';
 import { useAuthStore } from '@/stores/auth';
@@ -13,13 +13,50 @@ const error = ref(null);
 const newMessage = ref('');
 const messageContainer = ref(null);
 
+let pollingInterval = null;
+
+const stopPolling = () => {
+  if (pollingInterval) {
+    clearInterval(pollingInterval);
+    pollingInterval = null;
+  }
+};
+
+const startPolling = (convoId) => {
+  stopPolling();
+  pollingInterval = setInterval(async () => {
+    try {
+      const response = await api.getConversationDetails(convoId);
+      if (activeConversation.value?.id === convoId) {
+        if (response.data.messages.length > activeConversation.value.messages.length) {
+          activeConversation.value.messages = response.data.messages;
+          scrollToBottom();
+        }
+      }
+    } catch (err) {
+      console.error("Polling failed:", err);
+      stopPolling();
+    }
+  }, 5000);
+};
+
 const currentUser = computed(() => authStore.currentUser);
 
 const fetchConversations = async () => {
   loading.value = true;
   try {
     const response = await api.getConversations();
-    conversations.value = response.data;
+
+    // Handle pagination: check if data is an array or an object with 'results'
+    let data = [];
+    if (Array.isArray(response.data)) {
+      data = response.data;
+    } else if (response.data && Array.isArray(response.data.results)) {
+      data = response.data.results;
+    }
+
+    // Filter out any null or invalid conversations
+    conversations.value = data.filter(c => c && c.id);
 
     const activeConvoId = parseInt(route.query.active_convo, 10);
     if (activeConvoId && conversations.value.some(c => c.id === activeConvoId)) {
@@ -29,6 +66,7 @@ const fetchConversations = async () => {
     }
   } catch (err) {
     error.value = "Fehler beim Laden der Konversationen.";
+    console.error(err);
   } finally {
     loading.value = false;
   }
@@ -38,6 +76,7 @@ const selectConversation = async (convoId) => {
   try {
     const response = await api.getConversationDetails(convoId);
     activeConversation.value = response.data;
+    startPolling(convoId);
   } catch (err) {
     error.value = "Fehler beim Laden der Nachrichtendetails.";
   }
@@ -62,13 +101,20 @@ const scrollToBottom = async () => {
   }
 };
 
-watch(activeConversation, scrollToBottom, { deep: true });
 onMounted(fetchConversations);
+onUnmounted(stopPolling);
 
 const getOtherParticipant = (convo) => {
-  if (!convo || !currentUser.value) return 'Unbekannt';
-  const other = convo.participants_details.find(p => p.id !== currentUser.value.id);
-  return other ? other.username : 'Unbekannt';
+  if (!convo?.participants_details) return { username: 'Unbekannt' };
+  return convo.participants_details.find(p => p.id !== currentUser.value?.id) || { username: 'Unbekannt' };
+};
+
+const getParticipantAvatar = (convo) => {
+  const other = getOtherParticipant(convo);
+  if (other?.profile_picture) {
+    return `http://localhost:8000${other.profile_picture}`;
+  }
+  return null;
 };
 </script>
 
@@ -92,10 +138,13 @@ const getOtherParticipant = (convo) => {
           :class="{ 'active': activeConversation && activeConversation.id === convo.id }"
           class="conversation-card"
         >
-          <div class="avatar-placeholder"></div>
+          <div class="avatar-container">
+            <img v-if="getParticipantAvatar(convo)" :src="getParticipantAvatar(convo)" class="avatar-image" />
+            <div v-else class="avatar-placeholder"></div>
+          </div>
           <div class="convo-details">
             <div class="convo-header">
-              <span class="participant-name">{{ getOtherParticipant(convo) }}</span>
+              <span class="participant-name">{{ getOtherParticipant(convo).username }}</span>
               <span class="timestamp">{{ new Date(convo.updated_at).toLocaleDateString() }}</span>
             </div>
             <p class="message-preview">{{ convo.last_message_preview || 'Klicke um Nachrichten zu sehen' }}</p>
@@ -113,7 +162,7 @@ const getOtherParticipant = (convo) => {
       </div>
       <div v-else class="chat-window">
         <header class="panel-header chat-header">
-          <h3>{{ getOtherParticipant(activeConversation) }}</h3>
+          <h3>{{ getOtherParticipant(activeConversation).username }}</h3>
           <p>Antwortet in der Regel innerhalb weniger Stunden.</p>
         </header>
         <div class="message-container" ref="messageContainer">
@@ -144,9 +193,9 @@ const getOtherParticipant = (convo) => {
           <h3>Details zum Auftrag</h3>
         </header>
         <div class="details-body">
-          <h4>{{ activeConversation.job_details.title }}</h4>
-          <p>📍 {{ activeConversation.job_details.city }}</p>
-          <p>💰 {{ activeConversation.job_details.price }} €</p>
+          <h4>{{ activeConversation.job_details?.title || 'Auftrag' }}</h4>
+          <p>📍 {{ activeConversation.job_details?.city || 'Ort unbekannt' }}</p>
+          <p>💰 {{ activeConversation.job_details?.price || 'Preis unbekannt' }} €</p>
           <div class="divider"></div>
           <div class="action-buttons">
             <button class="base-button primary-action">Angebot annehmen</button>
@@ -208,12 +257,22 @@ const getOtherParticipant = (convo) => {
   background-color: #f7f7f7;
   border-left-color: var(--color-text);
 }
-.avatar-placeholder {
+.avatar-container {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background-color: #e0e0e0;
+  overflow: hidden;
   flex-shrink: 0;
+}
+.avatar-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.avatar-placeholder {
+  width: 100%;
+  height: 100%;
+  background-color: #e0e0e0;
 }
 .convo-details {
   flex-grow: 1;

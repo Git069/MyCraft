@@ -49,6 +49,9 @@ export default {
   getJobDetails(jobId) {
     return apiClient.get(`/jobs/${jobId}/`);
   },
+  deleteJob(jobId) {
+    return apiClient.delete(`/jobs/${jobId}/`);
+  },
   bookJob(jobId) {
     return apiClient.post(`/jobs/${jobId}/book/`);
   },
@@ -67,15 +70,12 @@ export default {
   postMessage(convoId, content) {
     return apiClient.post(`/conversations/${convoId}/post_message/`, { content: content });
   },
-  
-  // --- NEW DASHBOARD API FUNCTIONS ---
   getMyJobs() {
     return apiClient.get('/jobs/my_jobs/');
   },
   getMyBookings() {
     return apiClient.get('/jobs/my_bookings/');
   },
-
   setAuthToken(token) {
     if (token) {
       apiClient.defaults.headers.common['Authorization'] = `Token ${token}`;
