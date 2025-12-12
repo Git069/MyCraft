@@ -10,8 +10,8 @@ import JobDetailView from '@/views/JobDetailView.vue'
 import InboxView from '@/views/InboxView.vue'
 import ProfileView from '@/views/ProfileView.vue'
 import DashboardView from '@/views/DashboardView.vue'
-import EditJobView from '@/views/EditJobView.vue'
-import CraftsmanProfileView from '@/views/CraftsmanProfileView.vue' // Import new view
+import EditServiceView from '@/views/EditServiceView.vue' // Import new view
+import CraftsmanProfileView from '@/views/CraftsmanProfileView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -20,9 +20,15 @@ const router = createRouter({
     { path: '/login', name: 'Login', component: LoginView },
     { path: '/register', name: 'Register', component: RegisterView },
     { path: '/marketplace', name: 'JobMarketplace', component: JobMarketplaceView },
-    { path: '/jobs/:id', name: 'JobDetail', component: JobDetailView },
-    { path: '/jobs/:id/edit', name: 'JobEdit', component: EditJobView, meta: { requiresAuth: true, requiresCraftsman: true } },
-    { path: '/craftsman/:id', name: 'CraftsmanProfile', component: CraftsmanProfileView }, // New public profile route
+    { path: '/jobs/:id', name: 'JobDetail', component: JobDetailView }, // Keep for legacy URLs, or redirect
+    { path: '/services/:id', name: 'ServiceDetail', component: JobDetailView }, // New canonical URL
+    { 
+      path: '/services/:id/edit', // New Edit Route
+      name: 'ServiceEdit', 
+      component: EditServiceView, 
+      meta: { requiresAuth: true, requiresCraftsman: true } 
+    },
+    { path: '/craftsman/:id', name: 'CraftsmanProfile', component: CraftsmanProfileView },
     { path: '/create-job', name: 'CreateJob', component: CreateJobView, meta: { requiresAuth: true, requiresCraftsman: true } },
     { path: '/become-craftsman', name: 'BecomeCraftsman', component: BecomeCraftsmanView, meta: { requiresAuth: true } },
     { path: '/inbox', name: 'Inbox', component: InboxView, meta: { requiresAuth: true } },
@@ -31,7 +37,6 @@ const router = createRouter({
   ],
 })
 
-// ... (Navigation Guard remains the same)
 router.beforeEach((to, from, next) => {
   const authStore = useAuthStore();
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
@@ -39,7 +44,7 @@ router.beforeEach((to, from, next) => {
 
   if (requiresAuth && !authStore.isLoggedIn) {
     next({ name: 'Login' });
-  } else if (requiresCraftsman && !authStore.isCraftsman) {
+  } else if (requiresAuth && !authStore.isCraftsman && to.meta.requiresCraftsman) {
     next({ name: 'BecomeCraftsman' });
   } else {
     next();

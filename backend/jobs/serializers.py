@@ -1,9 +1,6 @@
 from rest_framework import serializers
 from django.utils import timezone
-from .models import Job
-# Import ReviewSerializer carefully to avoid circular dependency
-# A simple one is better here if needed, or use a string import.
-# from reviews.serializers import ReviewSerializer 
+from .models import Job, Booking
 
 class SimpleReviewSerializer(serializers.Serializer):
     id = serializers.IntegerField()
@@ -11,17 +8,16 @@ class SimpleReviewSerializer(serializers.Serializer):
 
 class JobSerializer(serializers.ModelSerializer):
     contractor_username = serializers.CharField(source='contractor.username', read_only=True)
-    review = SimpleReviewSerializer(read_only=True) # Nest the review if it exists
+    review = SimpleReviewSerializer(read_only=True, required=False)
 
     class Meta:
         model = Job
         fields = [
             'id', 'title', 'description', 'trade', 'zip_code', 'city', 
             'execution_date', 'price', 'status', 'created_at', 'updated_at', 
-            'contractor', 'client', 'contractor_username',
-            'review' # Add review field
+            'contractor', 'contractor_username', 'review'
         ]
-        read_only_fields = ['contractor', 'client', 'status']
+        read_only_fields = ['contractor', 'status']
 
     def validate_price(self, value):
         if value is not None and value < 0:
@@ -33,7 +29,11 @@ class JobSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Das Ausführungsdatum darf nicht in der Vergangenheit liegen.")
         return value
 
-    def validate(self, data):
-        if self.instance and self.instance.status != Job.Status.OPEN:
-            raise serializers.ValidationError("Nur offene Aufträge können bearbeitet werden.")
-        return data
+class BookingSerializer(serializers.ModelSerializer):
+    service = JobSerializer(read_only=True)
+    customer_name = serializers.CharField(source='customer.username', read_only=True)
+
+    class Meta:
+        model = Booking
+        fields = ['id', 'service', 'customer', 'customer_name', 'contractor', 'status', 'price', 'scheduled_date', 'created_at']
+        read_only_fields = ['customer', 'contractor']

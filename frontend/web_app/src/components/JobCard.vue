@@ -11,8 +11,8 @@ const props = defineProps({
 const emit = defineEmits(['delete', 'mark-completed', 'cancel', 'review']);
 const router = useRouter();
 
-const goToDetail = () => router.push({ name: 'JobDetail', params: { id: props.job.id } });
-const goToEdit = () => router.push({ name: 'JobEdit', params: { id: props.job.id } });
+const goToDetail = () => router.push({ name: 'ServiceDetail', params: { id: props.job.id } });
+const goToEdit = () => router.push({ name: 'ServiceEdit', params: { id: props.job.id } }); // FIX: Use 'ServiceEdit'
 
 const tradeImages = {
   PLUMBER: 'https://images.unsplash.com/photo-1581244277943-fe4a9c777189?auto=format&fit=crop&w=400&q=80',
@@ -70,6 +70,7 @@ const displayTitle = computed(() => `${props.job.title} in ${props.job.city}`);
 </template>
 
 <style scoped>
+/* Styles remain the same */
 .job-card { cursor: pointer; display: flex; flex-direction: column; background-color: white; border-radius: 16px; overflow: hidden; border: 1px solid transparent; transition: box-shadow 0.2s; }
 .job-card:has(.card-footer-actions) { border-color: var(--color-border); }
 .job-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }

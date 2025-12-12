@@ -1,10 +1,10 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.validators import MinValueValidator, MaxValueValidator
-from jobs.models import Job
+from jobs.models import Booking # Changed from Job to Booking
 
 class Review(models.Model):
-    job = models.OneToOneField(Job, on_delete=models.CASCADE, related_name='review')
+    booking = models.OneToOneField(Booking, on_delete=models.CASCADE, related_name='review')
     reviewer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='given_reviews')
     recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='received_reviews')
     rating = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
@@ -13,7 +13,7 @@ class Review(models.Model):
 
     class Meta:
         ordering = ['-created_at']
-        unique_together = ('job', 'reviewer') # A user can only review a job once
+        unique_together = ('booking', 'reviewer')
 
     def __str__(self):
-        return f"Review for {self.job.title} by {self.reviewer.username}"
+        return f"Review for Booking {self.booking.id} by {self.reviewer.username}"

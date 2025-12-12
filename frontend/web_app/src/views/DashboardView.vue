@@ -4,6 +4,7 @@ import api from '@/api';
 import { useAuthStore } from '@/stores/auth';
 import { useToastStore } from '@/stores/toast';
 import JobCard from '@/components/JobCard.vue';
+import BookingCard from '@/components/BookingCard.vue';
 import JobCardSkeleton from '@/components/JobCardSkeleton.vue';
 import ReviewModal from '@/components/ReviewModal.vue';
 
@@ -11,64 +12,57 @@ const authStore = useAuthStore();
 const toastStore = useToastStore();
 const isCraftsman = computed(() => authStore.isCraftsman);
 
-const activeTab = ref(isCraftsman.value ? 'my-jobs' : 'my-bookings');
-const myJobs = ref([]);
+const activeTab = ref(isCraftsman.value ? 'my-orders' : 'my-bookings');
+const myServices = ref([]);
 const myBookings = ref([]);
+const myOrders = ref([]);
 const loading = ref(true);
 
 const showReviewModal = ref(false);
-const selectedJobForReview = ref(null);
+const selectedBookingForReview = ref(null);
 
 const fetchData = async () => {
   loading.value = true;
   try {
-    const [jobsResponse, bookingsResponse] = await Promise.all([
-      isCraftsman.value ? api.getMyJobs() : Promise.resolve({ data: [] }),
+    const [servicesRes, bookingsRes, ordersRes] = await Promise.all([
+      isCraftsman.value ? api.getMyServices() : Promise.resolve({ data: [] }),
       api.getMyBookings(),
+      isCraftsman.value ? api.getMyOrders() : Promise.resolve({ data: [] }),
     ]);
-    myJobs.value = jobsResponse.data;
-    myBookings.value = bookingsResponse.data;
+    myServices.value = servicesRes.data.results || servicesRes.data;
+    myBookings.value = bookingsRes.data.results || bookingsRes.data;
+    myOrders.value = ordersRes.data.results || ordersRes.data;
   } catch (err) {
-    toastStore.addToast("Fehler beim Laden deiner Aufträge.", "error");
+    toastStore.addToast("Fehler beim Laden des Dashboards.", "error");
   } finally {
     loading.value = false;
   }
 };
 
-const updateJobInList = (jobId, list, updatedData) => {
-  const jobIndex = list.value.findIndex(j => j.id === jobId);
-  if (jobIndex !== -1) {
-    list.value[jobIndex] = { ...list.value[jobIndex], ...updatedData };
+const updateBookingStatus = (bookingId, list, updatedData) => {
+  const bookingIndex = list.value.findIndex(b => b.id === bookingId);
+  if (bookingIndex !== -1) {
+    list.value[bookingIndex] = { ...list.value[bookingIndex], ...updatedData };
   }
 };
 
-const handleMarkCompleted = async (jobId) => {
+const handleMarkCompleted = async (bookingId) => {
   try {
-    const response = await api.markJobAsCompleted(jobId);
-    updateJobInList(jobId, myJobs, { status: response.data.status });
+    const response = await api.markBookingAsCompleted(bookingId);
+    updateBookingStatus(bookingId, myOrders, { status: response.data.status });
     toastStore.addToast("Auftrag als erledigt markiert.", "success");
   } catch (err) { toastStore.addToast("Aktion fehlgeschlagen.", "error"); }
 };
 
-const handleCancelJob = async (jobId) => {
-  if (window.confirm("Möchtest du diesen Auftrag wirklich stornieren?")) {
-    try {
-      const response = await api.cancelJob(jobId);
-      updateJobInList(jobId, myJobs, { status: response.data.status });
-      toastStore.addToast("Auftrag storniert.", "info");
-    } catch (err) { toastStore.addToast("Aktion fehlgeschlagen.", "error"); }
-  }
-};
-
-const openReviewModal = (job) => {
-  selectedJobForReview.value = job;
+const openReviewModal = (booking) => {
+  selectedBookingForReview.value = booking;
   showReviewModal.value = true;
 };
 
 const handleCreateReview = async (reviewPayload) => {
   try {
-    const response = await api.createReview(reviewPayload);
-    updateJobInList(reviewPayload.job, myBookings, { review: response.data });
+    const response = await api.createReview({ ...reviewPayload, booking: selectedBookingForReview.value.id });
+    updateBookingStatus(selectedBookingForReview.value.id, myBookings, { review: response.data });
     toastStore.addToast("Bewertung erfolgreich abgegeben.", "success");
     showReviewModal.value = false;
   } catch (err) {
@@ -87,60 +81,62 @@ onMounted(fetchData);
 
     <div class="tabs-wrapper">
       <nav class="tab-nav">
-        <button v-if="isCraftsman" @click="activeTab = 'my-jobs'" class="tab-button" :class="{ 'active': activeTab === 'my-jobs' }">
-          Meine Angebote
-        </button>
-        <button @click="activeTab = 'my-bookings'" class="tab-button" :class="{ 'active': activeTab === 'my-bookings' }">
-          Meine Buchungen
-        </button>
+        <button v-if="isCraftsman" @click="activeTab = 'my-orders'" class="tab-button" :class="{ 'active': activeTab === 'my-orders' }">Meine Aufträge</button>
+        <button @click="activeTab = 'my-bookings'" class="tab-button" :class="{ 'active': activeTab === 'my-bookings' }">Meine Buchungen</button>
+        <button v-if="isCraftsman" @click="activeTab = 'my-services'" class="tab-button" :class="{ 'active': activeTab === 'my-services' }">Meine Inserate</button>
       </nav>
     </div>
 
     <main class="tab-content">
-      <div v-if="loading" class="jobs-grid">
+      <div v-if="loading" class="dashboard-grid">
         <JobCardSkeleton v-for="n in 4" :key="n" />
       </div>
 
       <template v-else>
-        <div v-if="activeTab === 'my-jobs'">
-          <div v-if="myJobs.length === 0" class="empty-state">
-            <h2>Keine Angebote</h2>
-            <router-link :to="{ name: 'CreateJob' }" class="base-button primary-action">Erstes Angebot erstellen</router-link>
+        <!-- TAB: Meine Inserate -->
+        <div v-if="activeTab === 'my-services'">
+          <div v-if="myServices.length === 0" class="empty-state">
+            <div class="empty-icon">📋</div>
+            <h2>Keine Inserate</h2>
+            <p>Erstelle dein erstes Service-Angebot, um Kunden zu erreichen.</p>
+            <router-link :to="{ name: 'CreateJob' }" class="base-button primary-action">Erstes Inserat erstellen</router-link>
           </div>
-          <div v-else class="jobs-grid">
-            <JobCard
-              v-for="job in myJobs"
-              :key="job.id"
-              :job="job"
-              :show-controls="true"
-              @cancel="handleCancelJob"
-              @mark-completed="handleMarkCompleted"
-            />
+          <div v-else class="dashboard-grid">
+            <JobCard v-for="service in myServices" :key="service.id" :job="service" :show-controls="true" />
           </div>
         </div>
 
+        <!-- TAB: Meine Aufträge (Eingehend) -->
+        <div v-if="activeTab === 'my-orders'">
+          <div v-if="myOrders.length === 0" class="empty-state">
+            <div class="empty-icon">📥</div>
+            <h2>Keine Aufträge</h2>
+            <p>Sobald Kunden deine Services buchen, erscheinen sie hier.</p>
+          </div>
+          <div v-else class="dashboard-grid">
+            <BookingCard v-for="booking in myOrders" :key="booking.id" :booking="booking" :show-controls="true" @mark-completed="handleMarkCompleted" />
+          </div>
+        </div>
+
+        <!-- TAB: Meine Buchungen (Ausgehend) -->
         <div v-if="activeTab === 'my-bookings'">
           <div v-if="myBookings.length === 0" class="empty-state">
+            <div class="empty-icon">📅</div>
             <h2>Keine Buchungen</h2>
-            <router-link :to="{ name: 'JobMarketplace' }" class="base-button primary-action">Aufträge finden</router-link>
+            <p>Du hast noch keine Services gebucht.</p>
+            <router-link :to="{ name: 'JobMarketplace' }" class="base-button primary-action">Services finden</router-link>
           </div>
-          <div v-else class="jobs-grid">
-            <JobCard
-              v-for="job in myBookings"
-              :key="job.id"
-              :job="job"
-              :show-controls="true"
-              @review="openReviewModal"
-            />
+          <div v-else class="dashboard-grid">
+            <BookingCard v-for="booking in myBookings" :key="booking.id" :booking="booking" :show-controls="true" @review="openReviewModal" />
           </div>
         </div>
       </template>
     </main>
 
     <ReviewModal
-      v-if="selectedJobForReview"
+      v-if="selectedBookingForReview"
       :is-open="showReviewModal"
-      :job="selectedJobForReview"
+      :job="selectedBookingForReview.service"
       @close="showReviewModal = false"
       @submit="handleCreateReview"
     />
@@ -152,20 +148,25 @@ onMounted(fetchData);
   padding-top: 48px;
   padding-bottom: 64px;
 }
+
 .dashboard-header h1 {
   margin-top: 0;
   margin-bottom: 32px;
   font-size: 2rem;
   font-weight: 800;
 }
+
+/* --- TABS --- */
 .tabs-wrapper {
   border-bottom: 1px solid var(--color-border);
-  margin-bottom: 32px;
+  margin-bottom: 24px; /* Reduced margin */
 }
+
 .tab-nav {
   display: flex;
   gap: 32px;
 }
+
 .tab-button {
   background: none;
   border: none;
@@ -176,12 +177,15 @@ onMounted(fetchData);
   cursor: pointer;
   position: relative;
 }
+
 .tab-button:hover {
   color: var(--color-text);
 }
+
 .tab-button.active {
   color: var(--color-text);
 }
+
 .tab-button.active::after {
   content: '';
   position: absolute;
@@ -191,15 +195,47 @@ onMounted(fetchData);
   height: 2px;
   background-color: var(--color-text);
 }
-.jobs-grid {
+
+/* --- GRID --- */
+.dashboard-grid {
   display: grid;
-  gap: 24px;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 24px;
+  width: 100%;
 }
+
+/* --- EMPTY STATE --- */
 .empty-state {
   text-align: center;
   padding: 64px 0;
   background-color: #f8f9fa;
   border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin-top: 24px;
+}
+
+.empty-icon {
+  font-size: 3rem;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.empty-state h2 {
+  margin-top: 0;
+  font-size: 1.5rem;
+  margin-bottom: 8px;
+}
+
+.empty-state p {
+  color: var(--color-text-light);
+  margin-bottom: 24px;
+}
+
+.primary-action {
+  padding: 12px 24px;
+  font-size: 1rem;
 }
 </style>

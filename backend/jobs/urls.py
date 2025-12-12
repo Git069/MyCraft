@@ -1,12 +1,9 @@
-# jobs/urls.py
-from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import JobViewSet
+from .views import JobViewSet, BookingViewSet
 
-# Der Router erstellt automatisch URLs
 router = DefaultRouter()
-router.register(r'jobs', JobViewSet)
+# Renaming 'jobs' to 'services' for clarity
+router.register(r'services', JobViewSet, basename='service')
+router.register(r'bookings', BookingViewSet, basename='booking')
 
-urlpatterns = [
-    path('', include(router.urls)),
-]
+urlpatterns = router.urls
