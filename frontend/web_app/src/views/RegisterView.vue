@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '@/api';
 import { useToastStore } from '@/stores/toast';
@@ -12,9 +12,23 @@ const password = ref('');
 const password2 = ref('');
 const isLoading = ref(false);
 
+// --- Real-time Validation ---
+const passwordError = ref('');
+watch(password, (newPassword) => {
+  if (newPassword.length > 0 && newPassword.length < 8) {
+    passwordError.value = 'Das Passwort muss mindestens 8 Zeichen lang sein.';
+  } else {
+    passwordError.value = '';
+  }
+});
+
 const handleRegister = async () => {
   if (password.value !== password2.value) {
     toastStore.addToast('Die Passwörter stimmen nicht überein.', 'error');
+    return;
+  }
+  if (passwordError.value) {
+    toastStore.addToast(passwordError.value, 'error');
     return;
   }
 
@@ -28,14 +42,8 @@ const handleRegister = async () => {
     });
     router.push({ name: 'Login', query: { registered: 'true' } });
   } catch (error) {
-    if (error.response && error.response.data) {
-      const errors = error.response.data;
-      const firstErrorKey = Object.keys(errors)[0];
-      const errorMessage = errors[firstErrorKey][0];
-      toastStore.addToast(errorMessage, 'error');
-    } else {
-      toastStore.addToast('Ein unbekannter Fehler ist aufgetreten.', 'error');
-    }
+    const errorMessage = error.response?.data?.password?.[0] || 'Ein Fehler ist aufgetreten.';
+    toastStore.addToast(errorMessage, 'error');
   } finally {
     isLoading.value = false;
   }
@@ -58,6 +66,7 @@ const handleRegister = async () => {
         <div class="form-group">
           <label for="password">Passwort</label>
           <input id="password" v-model="password" type="password" required />
+          <p v-if="passwordError" class="validation-error">{{ passwordError }}</p>
         </div>
         <div class="form-group">
           <label for="password2">Passwort bestätigen</label>
@@ -71,7 +80,7 @@ const handleRegister = async () => {
       <footer class="form-footer">
         <p>
           Du hast bereits ein Konto?
-          <router-link to="/login" class="login-link">Jetzt anmelden</router-link>
+          <router-link to="/login" class="register-link">Jetzt anmelden</router-link>
         </p>
       </footer>
     </div>
@@ -79,13 +88,11 @@ const handleRegister = async () => {
 </template>
 
 <style scoped>
-/* Styles are simplified as error messages are removed */
 .register-container {
   display: flex;
   justify-content: center;
   align-items: center;
   min-height: 80vh;
-  padding: var(--spacing-lg);
 }
 .register-form-wrapper {
   width: 100%;
@@ -115,5 +122,11 @@ const handleRegister = async () => {
 .login-link {
   font-weight: 600;
   color: var(--color-primary);
+}
+.validation-error {
+  color: var(--color-error);
+  font-size: 0.8rem;
+  margin-top: 4px;
+  margin-bottom: 0;
 }
 </style>

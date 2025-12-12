@@ -140,7 +140,6 @@ const getParticipantAvatar = (convo) => {
   return null;
 };
 
-// Helper for initials if no avatar
 const getInitials = (username) => {
   return username ? username.substring(0, 2).toUpperCase() : '??';
 };

@@ -1,31 +1,34 @@
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.exceptions import PermissionDenied
 from .models import Job
 from .serializers import JobSerializer
 from django_filters.rest_framework import DjangoFilterBackend
+from .permissions import IsOwnerOrReadOnly # Import custom permission
 
 class JobViewSet(viewsets.ModelViewSet):
     queryset = Job.objects.all()
     serializer_class = JobSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    # Apply the new permission class
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
     
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['status', 'trade', 'city']
 
     def perform_create(self, serializer):
+        if not self.request.user.profile.is_craftsman:
+            raise PermissionDenied("Only craftsmen can create jobs.")
         serializer.save(contractor=self.request.user)
 
     @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
     def my_jobs(self, request):
-        """ Returns jobs created by the current user (craftsman). """
         my_jobs_queryset = Job.objects.filter(contractor=request.user)
         serializer = self.get_serializer(my_jobs_queryset, many=True)
         return Response(serializer.data)
 
     @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
     def my_bookings(self, request):
-        """ Returns jobs booked by the current user (client). """
         my_bookings_queryset = Job.objects.filter(client=request.user)
         serializer = self.get_serializer(my_bookings_queryset, many=True)
         return Response(serializer.data)
