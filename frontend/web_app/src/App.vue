@@ -4,6 +4,7 @@ import { RouterLink, RouterView, useRouter } from 'vue-router';
 import AppLogo from '@/assets/logo.svg';
 import { useAuthStore } from '@/stores/auth';
 import ToastContainer from '@/components/ToastContainer.vue';
+import UserAvatar from '@/components/UserAvatar.vue'; // Import UserAvatar
 
 const authStore = useAuthStore();
 const router = useRouter();
@@ -51,7 +52,6 @@ onUnmounted(() => {
   <ToastContainer />
 
   <header class="main-header">
-    <!-- Use the new fluid container -->
     <div class="container-fluid nav-container">
 
       <RouterLink :to="{ name: 'Home' }" class="logo-link">
@@ -82,12 +82,8 @@ onUnmounted(() => {
               <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="presentation" focusable="false" style="display: block; fill: none; height: 16px; width: 16px; stroke: currentcolor; stroke-width: 3; overflow: visible;"><g fill="none"><path d="m2 16h28"></path><path d="m2 24h28"></path><path d="m2 8h28"></path></g></svg>
             </div>
 
-            <div class="avatar">
-              <img v-if="fullImageUrl" :src="fullImageUrl" alt="Profile Picture" class="avatar-image" />
-              <div v-else class="avatar-placeholder">
-                <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="presentation" focusable="false" style="display: block; height: 100%; width: 100%; fill: currentcolor;"><path d="m16 .7c-8.437 0-15.3 6.863-15.3 15.3 0 8.437 6.863 15.3 15.3 15.3 8.437 0 15.3-6.863 15.3-15.3 0-8.437-6.863-15.3-15.3-15.3zm0 28c-4.021 0-7.605-1.884-9.933-4.81a12.425 12.425 0 0 1 6.451-4.4 6.507 6.507 0 0 1 -3.018-5.49c0-3.584 2.916-6.5 6.5-6.5s6.5 2.916 6.5 6.5a6.513 6.513 0 0 1 -3.019 5.491 12.42 12.42 0 0 1 6.452 4.4c-2.328 2.925-5.912 4.809-9.933 4.809z"></path></svg>
-              </div>
-            </div>
+            <!-- Use UserAvatar component -->
+            <UserAvatar :src="fullImageUrl" :name="user?.username" :size="30" />
           </button>
 
           <div v-if="isMenuOpen" class="dropdown-menu">
@@ -120,12 +116,11 @@ onUnmounted(() => {
     </div>
   </header>
 
-  <!-- The router-view will now be wrapped by a container in each specific view -->
   <RouterView />
 </template>
 
 <style scoped>
-/* Styles remain the same */
+/* Styles remain largely the same, removed old avatar styles */
 .main-header {
   height: 80px;
   background-color: white;
@@ -185,22 +180,7 @@ onUnmounted(() => {
 .hamburger-icon {
   color: #222222;
 }
-.avatar {
-  height: 30px;
-  width: 30px;
-  border-radius: 50%;
-  overflow: hidden;
-}
-.avatar-image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-.avatar-placeholder {
-  color: #717171;
-  height: 100%;
-  width: 100%;
-}
+/* Removed old .avatar, .avatar-image, .avatar-placeholder styles */
 .dropdown-menu {
   position: absolute;
   top: calc(100% + 12px);
