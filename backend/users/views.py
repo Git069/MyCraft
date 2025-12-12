@@ -3,7 +3,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.parsers import MultiPartParser, FormParser
-from .serializers import UserCreateSerializer, CraftsmanProfileSerializer, ProfilePictureSerializer
+from djoser.views import UserViewSet as DjoserUserViewSet
+from .serializers import UserCreateSerializer, CraftsmanProfileSerializer, ProfilePictureSerializer, PublicUserSerializer
 
 class RegisterView(generics.CreateAPIView):
     permission_classes = (permissions.AllowAny,)
@@ -25,12 +26,18 @@ class BecomeCraftsmanView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class ProfilePictureUploadView(generics.UpdateAPIView):
-    """
-    View to upload a profile picture for the current user.
-    """
     serializer_class = ProfilePictureSerializer
     permission_classes = [permissions.IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
 
     def get_object(self):
         return self.request.user.profile
+
+# --- NEW: Override Djoser's UserViewSet ---
+class CustomUserViewSet(DjoserUserViewSet):
+    def get_serializer_class(self):
+        # Use PublicUserSerializer for the public retrieve action
+        if self.action == 'retrieve':
+            return PublicUserSerializer
+        # For all other actions (me, list, etc.), use the default from Djoser
+        return super().get_serializer_class()

@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRoute, useRouter, RouterLink } from 'vue-router';
 import api from '@/api';
 import { useAuthStore } from '@/stores/auth';
 import DetailHighlight from '@/components/DetailHighlight.vue';
@@ -26,7 +26,6 @@ const canContact = computed(() => {
 
 const handleContact = async () => {
   if (!canContact.value) return;
-
   isStartingConversation.value = true;
   error.value = null;
   try {
@@ -77,60 +76,47 @@ const heroImage = computed(() => {
 </script>
 
 <template>
+  <!-- Use the standard container for this page -->
   <div class="container">
     <div v-if="loading" class="loading-state">Lade Auftragsdetails...</div>
-    <div v-if="error && !isStartingConversation" class="error-message">{{ error }}</div>
-
-    <div v-if="job" class="detail-page-wrapper">
-      <!-- 1. Image Hero Section -->
+    <div v-else-if="job" class="detail-page-wrapper">
       <div class="image-hero-section">
         <img :src="heroImage" alt="Job category image" class="hero-image" />
       </div>
-
-      <!-- 2. Main Content Grid -->
       <div class="main-content-grid">
-        <!-- Left Column -->
         <div class="left-column">
           <header class="job-header">
             <h1>{{ job.title }}</h1>
             <p class="meta-info">{{ job.city }}, {{ job.zip_code }}</p>
           </header>
-
           <div class="divider"></div>
-
           <section class="contractor-section">
-            <div class="avatar-placeholder"></div>
+            <RouterLink :to="{ name: 'CraftsmanProfile', params: { id: job.contractor } }">
+              <div class="avatar-placeholder"></div>
+            </RouterLink>
             <div class="contractor-text">
               <span class="title">Auftrag von {{ job.contractor_username }}</span>
               <span class="subtitle">Seit 2024 dabei</span>
             </div>
           </section>
-
           <div class="divider"></div>
-
-          <!-- Airbnb-Style Feature Grid -->
           <section class="highlights-section">
             <DetailHighlight icon="🛠️" title="Gewerk" :subtitle="job.trade" />
             <DetailHighlight v-if="job.execution_date" icon="🗓️" title="Wunschtermin" :subtitle="new Date(job.execution_date).toLocaleDateString()" />
             <DetailHighlight icon="💰" title="Status" :subtitle="job.status" />
           </section>
-
           <div class="divider"></div>
-
           <section class="description-section">
             <h2>Beschreibung</h2>
             <p>{{ job.description }}</p>
           </section>
         </div>
-
-        <!-- Right Column (Sticky Sidebar) -->
         <div class="right-column">
           <aside class="action-card">
             <div class="price-header">
               <span class="price">{{ formatPrice(job.price) }}</span>
               <span class="price-label">Festpreis</span>
             </div>
-
             <div class="action-body">
               <button v-if="canContact" @click="handleContact" class="base-button primary-action" :disabled="isStartingConversation">
                 {{ isStartingConversation ? 'Wird gesendet...' : 'Handwerker kontaktieren' }}
@@ -139,9 +125,7 @@ const heroImage = computed(() => {
                 <router-link :to="{ name: 'Login' }">Melde dich an</router-link>, um zu kontaktieren.
               </div>
             </div>
-
             <div v-if="error && isStartingConversation" class="error-message booking-error">{{ error }}</div>
-
             <footer class="action-footer">
               <p>Du gehst noch keine verbindliche Buchung ein.</p>
             </footer>
@@ -153,163 +137,28 @@ const heroImage = computed(() => {
 </template>
 
 <style scoped>
-.detail-page-wrapper {
-  padding: var(--spacing-lg) 0;
-}
-
-/* --- 1. IMAGE HERO --- */
-.image-hero-section {
-  width: 100%;
-  max-height: 400px;
-  overflow: hidden;
-  border-radius: 16px;
-  margin-bottom: var(--spacing-xl);
-}
-.hero-image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-/* --- 2. MAIN GRID LAYOUT --- */
-.main-content-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--spacing-xxl);
-}
-@media (min-width: 992px) {
-  .main-content-grid {
-    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
-  }
-}
-
-/* --- 3. LEFT COLUMN --- */
-.job-header h1 {
-  font-size: 2rem;
-  font-weight: 800;
-  margin-top: 0;
-  margin-bottom: var(--spacing-xs);
-  color: var(--color-text);
-  text-transform: capitalize;
-}
-.meta-info {
-  font-size: 1rem;
-  color: var(--color-text-light);
-}
-
-.divider {
-  border-bottom: 1px solid var(--color-border);
-  margin: 32px 0;
-}
-
-/* Contractor Section */
-.contractor-section {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 8px 0;
-}
-.avatar-placeholder {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background-color: #f1f1f1;
-  flex-shrink: 0;
-}
-.contractor-text .title {
-  display: block;
-  font-weight: 600;
-  font-size: 1.1rem;
-}
-.contractor-text .subtitle {
-  font-size: 0.9rem;
-  color: var(--color-text-light);
-}
-
-/* Highlights Grid */
-.highlights-section {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 24px;
-}
-@media (min-width: 768px) {
-  .highlights-section {
-    grid-template-columns: 1fr 1fr;
-  }
-}
-
-.description-section h2 {
-  font-size: 1.5rem;
-  margin-top: 0;
-  margin-bottom: var(--spacing-md);
-}
-.description-section p {
-  line-height: 1.7;
-  white-space: pre-wrap;
-}
-
-/* --- 4. RIGHT COLUMN (ACTION CARD) --- */
-.right-column {
-  position: relative;
-}
-.action-card {
-  background-color: white;
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
-  padding: 24px;
-  box-shadow: 0 6px 16px rgba(0,0,0,0.12);
-
-  /* Sticky behavior */
-  position: sticky;
-  top: 120px;
-}
-
-.price-header {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  margin-bottom: 24px;
-}
-.price {
-  font-size: 1.5rem;
-  font-weight: 800;
-  color: var(--color-text);
-}
-.price-label {
-  color: var(--color-text-light);
-  font-size: 1rem;
-}
-
-.primary-action {
-  width: 100%;
-  font-size: 1rem;
-  padding: 14px;
-  font-weight: 600;
-}
-
-.action-footer {
-  text-align: center;
-  font-size: 0.85rem;
-  color: var(--color-text-light);
-  margin-top: 16px;
-}
-
-.login-prompt {
-  text-align: center;
-  padding: var(--spacing-sm) var(--spacing-md);
-  border-radius: var(--border-radius);
-  background-color: #f8f9fa;
-  color: var(--color-text-light);
-}
-.login-prompt a {
-  font-weight: bold;
-}
-.error-message {
-  background-color: #fff0f0;
-  color: var(--color-error);
-  padding: 12px;
-  border-radius: 8px;
-  margin-top: 1rem;
-  text-align: center;
-}
+/* Styles from the correct version are restored */
+.detail-page-wrapper { padding: var(--spacing-lg) 0; }
+.image-hero-section { width: 100%; max-height: 400px; overflow: hidden; border-radius: 16px; margin-bottom: var(--spacing-xl); }
+.hero-image { width: 100%; height: 100%; object-fit: cover; }
+.main-content-grid { display: grid; grid-template-columns: 1fr; gap: var(--spacing-xxl); }
+@media (min-width: 992px) { .main-content-grid { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); } }
+.job-header h1 { font-size: 2rem; font-weight: 800; margin-top: 0; margin-bottom: var(--spacing-xs); text-transform: capitalize; }
+.meta-info { font-size: 1rem; color: var(--color-text-light); }
+.divider { border-bottom: 1px solid var(--color-border); margin: 32px 0; }
+.contractor-section { display: flex; align-items: center; gap: 16px; padding: 8px 0; }
+.avatar-placeholder { width: 56px; height: 56px; border-radius: 50%; background-color: #f1f1f1; flex-shrink: 0; }
+.contractor-text .title { display: block; font-weight: 600; font-size: 1.1rem; }
+.contractor-text .subtitle { font-size: 0.9rem; color: var(--color-text-light); }
+.highlights-section { display: grid; grid-template-columns: 1fr; gap: 24px; }
+@media (min-width: 768px) { .highlights-section { grid-template-columns: 1fr 1fr; } }
+.description-section h2 { font-size: 1.5rem; margin-top: 0; margin-bottom: var(--spacing-md); }
+.description-section p { line-height: 1.7; white-space: pre-wrap; }
+.right-column { position: relative; }
+.action-card { background-color: white; border: 1px solid var(--color-border); border-radius: 12px; padding: 24px; box-shadow: 0 6px 16px rgba(0,0,0,0.12); position: sticky; top: 120px; }
+.price-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 24px; }
+.price { font-size: 1.5rem; font-weight: 800; }
+.price-label { color: var(--color-text-light); font-size: 1rem; }
+.primary-action { width: 100%; font-size: 1rem; padding: 14px; font-weight: 600; }
+.action-footer { text-align: center; font-size: 0.85rem; color: var(--color-text-light); margin-top: 16px; }
 </style>

@@ -5,12 +5,11 @@ from rest_framework.exceptions import PermissionDenied
 from .models import Job
 from .serializers import JobSerializer
 from django_filters.rest_framework import DjangoFilterBackend
-from .permissions import IsOwnerOrReadOnly # Import custom permission
+from .permissions import IsOwnerOrReadOnly
 
 class JobViewSet(viewsets.ModelViewSet):
     queryset = Job.objects.all()
     serializer_class = JobSerializer
-    # Apply the new permission class
     permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
     
     filter_backends = [DjangoFilterBackend]
@@ -35,18 +34,42 @@ class JobViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
     def book(self, request, pk=None):
+        # ... (book logic remains the same)
         job = self.get_object()
         user = request.user
-
         if job.status != 'OPEN':
             return Response({'detail': 'This job is no longer available.'}, status=status.HTTP_400_BAD_REQUEST)
-        
         if job.contractor == user:
             return Response({'detail': 'You cannot book your own job.'}, status=status.HTTP_400_BAD_REQUEST)
-
         job.client = user
         job.status = 'BOOKED'
         job.save()
-
         serializer = self.get_serializer(job)
         return Response(serializer.data)
+
+    # --- NEW: Status Change Actions ---
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def mark_completed(self, request, pk=None):
+        job = self.get_object()
+        # Only the contractor or the client can mark as completed
+        if request.user != job.contractor and request.user != job.client:
+            raise PermissionDenied("You are not authorized to mark this job as completed.")
+        job.status = Job.Status.COMPLETED
+        job.save()
+        return Response(self.get_serializer(job).data)
+
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def cancel(self, request, pk=None):
+        job = self.get_object()
+        # Only the contractor (owner) can cancel an open job
+        if job.status == Job.Status.OPEN and request.user == job.contractor:
+            job.status = Job.Status.CANCELLED
+            job.save()
+            return Response(self.get_serializer(job).data)
+        # The client can cancel a booked job
+        elif job.status == Job.Status.BOOKED and request.user == job.client:
+            job.status = Job.Status.CANCELLED
+            job.save()
+            return Response(self.get_serializer(job).data)
+        
+        raise PermissionDenied("You are not authorized to cancel this job at its current status.")

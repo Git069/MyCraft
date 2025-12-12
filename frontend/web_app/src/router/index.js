@@ -9,7 +9,9 @@ import BecomeCraftsmanView from '@/views/BecomeCraftsmanView.vue'
 import JobDetailView from '@/views/JobDetailView.vue'
 import InboxView from '@/views/InboxView.vue'
 import ProfileView from '@/views/ProfileView.vue'
-import DashboardView from '@/views/DashboardView.vue' // Import the new view
+import DashboardView from '@/views/DashboardView.vue'
+import EditJobView from '@/views/EditJobView.vue'
+import CraftsmanProfileView from '@/views/CraftsmanProfileView.vue' // Import new view
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -19,41 +21,17 @@ const router = createRouter({
     { path: '/register', name: 'Register', component: RegisterView },
     { path: '/marketplace', name: 'JobMarketplace', component: JobMarketplaceView },
     { path: '/jobs/:id', name: 'JobDetail', component: JobDetailView },
-    { 
-      path: '/create-job', 
-      name: 'CreateJob', 
-      component: CreateJobView, 
-      meta: { requiresAuth: true, requiresCraftsman: true } 
-    },
-    { 
-      path: '/become-craftsman', 
-      name: 'BecomeCraftsman', 
-      component: BecomeCraftsmanView, 
-      meta: { requiresAuth: true } 
-    },
-    { 
-      path: '/inbox', 
-      name: 'Inbox', 
-      component: InboxView, 
-      meta: { requiresAuth: true } 
-    },
-    { 
-      path: '/profile', 
-      name: 'Profile', 
-      component: ProfileView, 
-      meta: { requiresAuth: true } 
-    },
-    // New Dashboard route
-    { 
-      path: '/dashboard', 
-      name: 'Dashboard', 
-      component: DashboardView,
-      meta: { requiresAuth: true } 
-    },
+    { path: '/jobs/:id/edit', name: 'JobEdit', component: EditJobView, meta: { requiresAuth: true, requiresCraftsman: true } },
+    { path: '/craftsman/:id', name: 'CraftsmanProfile', component: CraftsmanProfileView }, // New public profile route
+    { path: '/create-job', name: 'CreateJob', component: CreateJobView, meta: { requiresAuth: true, requiresCraftsman: true } },
+    { path: '/become-craftsman', name: 'BecomeCraftsman', component: BecomeCraftsmanView, meta: { requiresAuth: true } },
+    { path: '/inbox', name: 'Inbox', component: InboxView, meta: { requiresAuth: true } },
+    { path: '/profile', name: 'Profile', component: ProfileView, meta: { requiresAuth: true } },
+    { path: '/dashboard', name: 'Dashboard', component: DashboardView, meta: { requiresAuth: true } },
   ],
 })
 
-// Navigation Guard
+// ... (Navigation Guard remains the same)
 router.beforeEach((to, from, next) => {
   const authStore = useAuthStore();
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
