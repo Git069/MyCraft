@@ -1,38 +1,27 @@
+# Base configuration for production
+version: "3.8"
+
 services:
   backend:
     build:
       context: ./backend
-    ports:
-      - "8000:8000"
+    # In production, the backend is not exposed directly.
+    # A reverse proxy (like Nginx) would talk to it on port 8000.
+    expose:
+      - 8000
     env_file:
-      - ./backend/.env
-    profiles:
-      - develop
-    volumes:
-      - ./backend:/app
+      - ./backend/.env.prod
+    command: gunicorn config.wsgi:application --bind 0.0.0.0:8000
 
   frontend:
     build:
       context: ./frontend/web_app
-      # For development, we only want to build the 'build' stage from our Dockerfile.
-      # This stage has Node.js and npm installed.
-      target: build
+      # For production, the final nginx stage is built by default
     ports:
-      - "5173:5173"
-    env_file:
-      - ./frontend/web_app/.env
-    profiles:
-      - develop
-    volumes:
-      - ./frontend/web_app:/app
-      # This named volume prevents the node_modules directory in the container
-      # from being overwritten by the host's empty directory on startup.
-      - node_modules:/app/node_modules
-    # We still need to specify the command to run the dev server.
-    command: npm run dev
+      - "80:80" # Expose on standard HTTP port
     depends_on:
       - backend
 
-# Define the named volume for node_modules
 volumes:
+  # This volume is only used in development, but needs to be defined here.
   node_modules:

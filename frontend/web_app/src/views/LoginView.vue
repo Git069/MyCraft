@@ -1,58 +1,34 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import api from '@/api';
+import { useAuthStore } from '@/stores/auth';
+import { useToastStore } from '@/stores/toast'; // Import toast store
 
-// Reactive state for form inputs
-const email = ref(''); // The user enters their email
+const email = ref('');
 const password = ref('');
-const errorMessage = ref('');
-const successMessage = ref('');
 const isLoading = ref(false);
 
 const router = useRouter();
 const route = useRoute();
+const authStore = useAuthStore();
+const toastStore = useToastStore(); // Use toast store
 
-// Check for success message from registration
 onMounted(() => {
   if (route.query.registered === 'true') {
-    successMessage.value = 'Registrierung erfolgreich! Bitte melde dich an.';
+    toastStore.addToast('Registrierung erfolgreich! Bitte melde dich an.', 'success');
   }
 });
 
 const handleLogin = async () => {
-  errorMessage.value = '';
-  successMessage.value = '';
   isLoading.value = true;
-
-  if (!email.value || !password.value) {
-    errorMessage.value = 'Bitte füllen Sie beide Felder aus.';
-    isLoading.value = false;
-    return;
-  }
-
   try {
-    // --- API Call: Send email as username ---
-    const response = await api.login({
-      username: email.value, // The backend expects a 'username' field
+    await authStore.login({
+      username: email.value,
       password: password.value,
     });
-
-    const token = response.data.auth_token;
-    if (token) {
-      api.setAuthToken(token);
-      router.push({ name: 'JobMarketplace' });
-    } else {
-      throw new Error('Kein Token erhalten.');
-    }
-
+    router.push({ name: 'Dashboard' }); // Redirect to dashboard on login
   } catch (error) {
-    if (error.response && error.response.data) {
-      errorMessage.value = 'Anmeldedaten sind ungültig. Bitte versuchen Sie es erneut.';
-    } else {
-      errorMessage.value = 'Ein unbekannter Fehler ist aufgetreten.';
-    }
-    console.error('Login failed:', error);
+    toastStore.addToast('Anmeldedaten sind ungültig. Bitte versuchen Sie es erneut.', 'error');
   } finally {
     isLoading.value = false;
   }
@@ -68,14 +44,7 @@ const handleLogin = async () => {
       </header>
 
       <form @submit.prevent="handleLogin" class="login-form">
-        <div v-if="successMessage" class="success-message">
-          {{ successMessage }}
-        </div>
-        <div v-if="errorMessage" class="error-message">
-          {{ errorMessage }}
-        </div>
-
-        <!-- Email Input -->
+        <!-- Error messages are now handled by the global toast container -->
         <div class="form-group">
           <label for="email">E-Mail-Adresse</label>
           <input
@@ -86,8 +55,6 @@ const handleLogin = async () => {
             required
           />
         </div>
-
-        <!-- Password Input -->
         <div class="form-group">
           <label for="password">Passwort</label>
           <input
@@ -98,12 +65,10 @@ const handleLogin = async () => {
             required
           />
         </div>
-
         <button type="submit" class="base-button login-button" :disabled="isLoading">
           {{ isLoading ? 'Melde an...' : 'Anmelden' }}
         </button>
       </form>
-
       <footer class="form-footer">
         <a href="#" class="forgot-password-link">Passwort vergessen?</a>
         <p>
@@ -116,7 +81,7 @@ const handleLogin = async () => {
 </template>
 
 <style scoped>
-/* Styles are identical to the previous version, just with email instead of username */
+/* Styles are simplified as error/success messages are removed */
 .login-container {
   display: flex;
   justify-content: center;
@@ -124,7 +89,6 @@ const handleLogin = async () => {
   min-height: 80vh;
   padding: var(--spacing-lg);
 }
-
 .login-form-wrapper {
   width: 100%;
   max-width: 450px;
@@ -133,58 +97,28 @@ const handleLogin = async () => {
   border-radius: var(--border-radius);
   box-shadow: var(--box-shadow);
 }
-
 .form-header {
   margin-bottom: var(--spacing-lg);
 }
-.form-header h1 {
-  margin-top: 0;
-}
-.form-header p {
-  color: var(--color-text-light);
-}
-
 .login-form {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-md);
 }
-
 .login-button {
   width: 100%;
-  background-color: var(--color-primary);
-  padding-top: var(--spacing-sm);
-  padding-bottom: var(--spacing-sm);
+  margin-top: var(--spacing-sm);
 }
-.login-button:hover {
-  background-color: var(--color-primary-dark);
-}
-
-.error-message, .success-message {
-  color: var(--color-text-inverted);
-  padding: var(--spacing-sm) var(--spacing-md);
-  border-radius: var(--border-radius);
-  text-align: center;
-}
-.error-message {
-  background-color: var(--color-error);
-}
-.success-message {
-  background-color: var(--color-success);
-}
-
 .form-footer {
   margin-top: var(--spacing-xl);
   text-align: center;
   font-size: var(--font-size-sm);
 }
-
 .forgot-password-link {
   display: block;
   margin-bottom: var(--spacing-md);
   color: var(--color-text-light);
 }
-
 .register-link {
   font-weight: 600;
   color: var(--color-primary);

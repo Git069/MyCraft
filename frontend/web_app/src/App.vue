@@ -1,110 +1,223 @@
 <script setup>
-import { RouterLink, RouterView } from 'vue-router'
-// NEU: Importieren Sie Ihr Logo direkt. Der Alias @ steht für den 'src/' Ordner.
-import AppLogo from '@/assets/logo.svg' 
+import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { RouterLink, RouterView, useRouter } from 'vue-router';
+import AppLogo from '@/assets/logo.svg';
+import { useAuthStore } from '@/stores/auth';
+import ToastContainer from '@/components/ToastContainer.vue';
+import UserAvatar from '@/components/UserAvatar.vue'; // Import UserAvatar
+
+const authStore = useAuthStore();
+const router = useRouter();
+
+const isLoggedIn = computed(() => authStore.isLoggedIn);
+const isCraftsman = computed(() => authStore.isCraftsman);
+const user = computed(() => authStore.currentUser);
+
+const isMenuOpen = ref(false);
+const menuRef = ref(null);
+
+const toggleMenu = () => {
+  isMenuOpen.value = !isMenuOpen.value;
+};
+
+const closeMenu = (event) => {
+  if (menuRef.value && !menuRef.value.contains(event.target)) {
+    isMenuOpen.value = false;
+  }
+};
+
+const handleLogout = () => {
+  authStore.logout();
+  isMenuOpen.value = false;
+  router.push({ name: 'Home' });
+};
+
+const fullImageUrl = computed(() => {
+  if (user.value?.profile_picture) {
+    return `http://localhost:8000${user.value.profile_picture}`;
+  }
+  return null;
+});
+
+onMounted(() => {
+  document.addEventListener('click', closeMenu);
+});
+
+onUnmounted(() => {
+  document.removeEventListener('click', closeMenu);
+});
 </script>
 
 <template>
-  <!-- Die gesamte Navigation wird in den <header> verlagert -->
-  <header>
-    <div class="nav-container">
-      
-      <!-- 1. Logo-Bereich (ersetzt den "Home"-Link) -->
-      <!-- <RouterLink> sorgt dafür, dass ein Klick zur Startseite navigiert -->
-      <RouterLink :to="{ name: 'home' }" class="logo-link"> 
-        <img  :src="AppLogo" alt="App Logo" class="logo-image" />
+  <ToastContainer />
+
+  <header class="main-header">
+    <div class="container-fluid nav-container">
+
+      <RouterLink :to="{ name: 'Home' }" class="logo-link">
+        <img :src="AppLogo" alt="MyCraft Logo" class="logo-image" />
       </RouterLink>
-      
-      <!-- 2. Navigations-Links (rechtsbündig) -->
-      <nav class="nav-links">
-        <!-- Der "Home"-Link wurde entfernt -->
-        <!--<RouterLink to="/login">Login</RouterLink>--> 
-        <!--<RouterLink to="/register">Registrieren</RouterLink>-->
-        <RouterLink :to="{ name: 'login' }">Login</RouterLink>
-        <RouterLink :to="{ name: 'register' }">Registrieren</RouterLink>
+
+      <nav class="nav-right">
+
+        <RouterLink
+          v-if="isLoggedIn && !isCraftsman"
+          :to="{ name: 'BecomeCraftsman' }"
+          class="become-host-link"
+        >
+          Werde Handwerker
+        </RouterLink>
+
+        <RouterLink
+          v-if="isLoggedIn && isCraftsman"
+          :to="{ name: 'CreateJob' }"
+          class="become-host-link"
+        >
+          Auftrag erstellen
+        </RouterLink>
+
+        <div class="user-menu-wrapper" ref="menuRef">
+          <button class="user-menu-btn" @click.stop="toggleMenu">
+            <div class="hamburger-icon">
+              <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="presentation" focusable="false" style="display: block; fill: none; height: 16px; width: 16px; stroke: currentcolor; stroke-width: 3; overflow: visible;"><g fill="none"><path d="m2 16h28"></path><path d="m2 24h28"></path><path d="m2 8h28"></path></g></svg>
+            </div>
+
+            <!-- Use UserAvatar component -->
+            <UserAvatar :src="fullImageUrl" :name="user?.username" :size="30" />
+          </button>
+
+          <div v-if="isMenuOpen" class="dropdown-menu">
+            <template v-if="isLoggedIn">
+              <RouterLink :to="{ name: 'Dashboard' }" class="menu-item bold" @click="isMenuOpen = false">
+                Dashboard
+              </RouterLink>
+              <RouterLink :to="{ name: 'Inbox' }" class="menu-item" @click="isMenuOpen = false">
+                Nachrichten
+              </RouterLink>
+              <RouterLink :to="{ name: 'Profile' }" class="menu-item" @click="isMenuOpen = false">
+                Profil
+              </RouterLink>
+              <div class="divider"></div>
+              <button class="menu-item logout-item" @click="handleLogout">Logout</button>
+            </template>
+
+            <template v-else>
+              <RouterLink :to="{ name: 'Login' }" class="menu-item bold" @click="isMenuOpen = false">
+                Login
+              </RouterLink>
+              <RouterLink :to="{ name: 'Register' }" class="menu-item" @click="isMenuOpen = false">
+                Registrieren
+              </RouterLink>
+            </template>
+          </div>
+        </div>
+
       </nav>
-      
     </div>
   </header>
 
-  <!-- Der RouterView, der den Inhalt der aktuellen Seite anzeigt -->
   <RouterView />
 </template>
 
 <style scoped>
-/* -------------------------------------------------------------------------- */
-/* 1. LAYOUT DES CONTAINERS (Flexbox)                                         */
-/* -------------------------------------------------------------------------- */
-header {
-  /* Stellt sicher, dass die Kopfzeile die volle Breite einnimmt */
-  width: 100%;
-  /* Optional: Hintergrundfarbe für die Navigationsleiste */
-  background-color: #ffffff; 
-  /* Optional: Leichte Trennlinie unten */
-  border-bottom: 1px solid #eeeeee;
+/* Styles remain largely the same, removed old avatar styles */
+.main-header {
+  height: 80px;
+  background-color: white;
+  border-bottom: 1px solid #ebebeb;
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
-
-/* Der innere Container, der die linke und rechte Seite steuert */
 .nav-container {
-  /* Verwendet Flexbox für die Aufteilung */
+  height: 100%;
   display: flex;
-  
-  /* Ordnet Logo links und Links rechts an (wichtigste Regel!) */
-  justify-content: space-between; 
-  
-  /* Zentriert die Elemente vertikal */
-  align-items: center; 
-  
-  /* Fügt vertikales Padding hinzu (Abstand oben/unten) */
-  padding: 10px 0;
-  
-  /* Wichtig: Nutzt den globalen Rand-Abstand nur intern */
-  /* Wir nutzen hier die gleiche Logik wie in PublicStyles.css für den body, 
-     aber limitieren die Breite, falls Sie den Inhalt zentrieren möchten. */
-  max-width: 1200px; /* Maximale Breite des Navigationsinhalts */
-  margin: 0 auto;    /* Zentrierung des Navigationsinhalts */
-}
-
-/* -------------------------------------------------------------------------- */
-/* 2. LOGO-STYLING (NEU)                                                      */
-/* -------------------------------------------------------------------------- */
-.logo-link {
-  text-decoration: none; 
-  /* Stellt sicher, dass das Logo und der Link flexibel sind */
-  display: flex; 
+  justify-content: space-between;
   align-items: center;
 }
-
+.logo-link {
+  display: flex;
+  align-items: center;
+}
 .logo-image {
-  /* NEU: Definieren Sie eine feste Höhe, damit das Logo im Nav-Bereich Platz hat */
-  height: clamp(30px, 5vw, 45pxpx); /* Skaliert zwischen 30px und 45px je nach Viewport-Breite */
+  height: 32px;
   width: auto;
 }
-
-/* -------------------------------------------------------------------------- */
-/* 3. NAVIGATIONS-LINKS STYLING                                               */
-/* -------------------------------------------------------------------------- */
-.nav-links {
+.nav-right {
   display: flex;
-  gap: 15px; /* Abstand zwischen den Links */
+  align-items: center;
+  gap: 8px;
 }
-
-.nav-links a {
-  /* Entfernt die Unterstreichung */
-  text-decoration: none; 
-  color: #495057;
-  font-weight: 500;
-  padding: 5px 10px; /* Kleiner Innenabstand für Hover-Effekt */
-  transition: color 0.2s;
+.become-host-link {
+  text-decoration: none;
+  color: var(--color-text);
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 10px 16px;
+  border-radius: 22px;
+  transition: background-color 0.2s;
 }
-
-.nav-links a:hover,
-.nav-links a.router-link-exact-active {
-  color: #007bff; /* Farbe bei Hover oder aktiver Route */
+.become-host-link:hover {
+  background-color: #f7f7f7;
 }
-
-/* Entfernt den alten .wrapper, da wir .nav-container verwenden */
-.wrapper {
-  display: none;
+.user-menu-wrapper {
+  position: relative;
+}
+.user-menu-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: white;
+  border: 1px solid #dddddd;
+  border-radius: 21px;
+  padding: 5px 5px 5px 12px;
+  cursor: pointer;
+  transition: box-shadow 0.2s;
+}
+.user-menu-btn:hover {
+  box-shadow: 0 2px 4px rgba(0,0,0,0.18);
+}
+.hamburger-icon {
+  color: #222222;
+}
+/* Removed old .avatar, .avatar-image, .avatar-placeholder styles */
+.dropdown-menu {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+  width: 240px;
+  padding: 8px 0;
+  overflow: hidden;
+  z-index: 101;
+}
+.menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 12px 16px;
+  font-size: 0.9rem;
+  color: #222222;
+  text-decoration: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+.menu-item:hover {
+  background-color: #f7f7f7;
+}
+.menu-item.bold {
+  font-weight: 600;
+}
+.logout-item {
+  color: #222222;
+}
+.divider {
+  height: 1px;
+  background-color: #dddddd;
+  margin: 8px 0;
 }
 </style>

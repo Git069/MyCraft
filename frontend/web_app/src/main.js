@@ -1,14 +1,20 @@
 import { createApp } from 'vue'
+import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
-import api from './api' // Import the api service
 import './PublicStyles.css'
+import { useAuthStore } from './stores/auth'
 
-// Initialize the API service (checks for existing token)
-api.initialize();
+async function initializeApp() {
+  const app = createApp(App)
 
-const app = createApp(App)
+  app.use(createPinia())
+  app.use(router)
 
-app.use(router)
+  const authStore = useAuthStore();
+  await authStore.initializeAuth();
 
-app.mount('#app')
+  app.mount('#app')
+}
+
+initializeApp();

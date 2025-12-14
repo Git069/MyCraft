@@ -1,58 +1,64 @@
-# users/serializers.py
-
+from djoser.serializers import UserCreateSerializer as BaseUserCreateSerializer
+from djoser.serializers import UserSerializer as BaseUserSerializer
 from rest_framework import serializers
-from django.contrib.auth.models import User # Importiere das Standard-User-Modell
+from django.db.models import Avg
+from .models import Profile
 
-class RegisterSerializer(serializers.ModelSerializer):
-    # Fügen Sie ein extra Passwort-Feld hinzu, das NUR zum Schreiben (write_only=True) dient
-    # und NICHT zurück an den Client gesendet wird.
-    password = serializers.CharField(
-        write_only=True,
-        required=True,
-        style={'input_type': 'password'}
-    )
-    
-    password2 = serializers.CharField(
-        write_only=True,
-       required=True,
-        style={'input_type': 'password'}
-    )
+class UserCreateSerializer(BaseUserCreateSerializer):
+    class Meta(BaseUserCreateSerializer.Meta):
+        fields = ('id', 'username', 'email', 'password')
 
+class CraftsmanProfileSerializer(serializers.ModelSerializer):
     class Meta:
-        # Verwende das Standard-User-Modell von Django
-        model = User
-        # Definiere, welche Felder angenommen werden sollen
-        fields = ('id', 'username', 'email', 'password', 'password2')
-        # Standardmäßig benötigt Django einen 'username', 
-        # aber wir können ihn hier gleich der E-Mail zuweisen:
-        extra_kwargs = {'username': {'required': False}}
+        model = Profile
+        fields = ('company_name', 'street_address', 'zip_code', 'city', 'bio')
+        extra_kwargs = {
+            'company_name': {'required': True},
+            'street_address': {'required': True},
+            'zip_code': {'required': True},
+            'city': {'required': True},
+        }
 
-    # --- Validierung (Validation) ---
+class ProfilePictureSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Profile
+        fields = ('profile_picture',)
 
-    def validate(self, attrs):
-        # 1. Prüfe, ob die E-Mail bereits existiert
-        if User.objects.filter(email=attrs['email']).exists():
-            raise serializers.ValidationError({"email": "Diese E-Mail-Adresse ist bereits registriert."})
-            
-        # Optional: Prüfe auf übereinstimmende Passwörter
-        if attrs['password'] != attrs['password2']:
-            raise serializers.ValidationError({"password": "Die Passwörter stimmen nicht überein."})
+class PublicReviewSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    rating = serializers.IntegerField(read_only=True)
+    comment = serializers.CharField(read_only=True)
+    created_at = serializers.DateTimeField(read_only=True)
+    reviewer_name = serializers.CharField(source='reviewer.username', read_only=True)
+    reviewer_avatar = serializers.ImageField(source='reviewer.profile.profile_picture', read_only=True)
+    job_title = serializers.CharField(source='job.title', read_only=True)
 
-        # Setze den Benutzernamen gleich der E-Mail ( falls Sie keinen separaten Benutzernamen wünschen )
-        attrs['username'] = attrs['email']
-        
-        return attrs
+class UserSerializer(BaseUserSerializer):
+    is_craftsman = serializers.BooleanField(source='profile.is_craftsman', read_only=True)
+    company_name = serializers.CharField(source='profile.company_name', read_only=True)
+    profile_picture = serializers.ImageField(source='profile.profile_picture', read_only=True)
+    average_rating = serializers.SerializerMethodField()
+    review_count = serializers.SerializerMethodField()
+    bio = serializers.CharField(source='profile.bio', read_only=True)
+    city = serializers.CharField(source='profile.city', read_only=True)
+    reviews = serializers.SerializerMethodField()
+    date_joined = serializers.DateTimeField(read_only=True)
 
-    # --- Erstellung (Create) ---
+    class Meta(BaseUserSerializer.Meta):
+        fields = ('id', 'username', 'email', 'is_craftsman', 'company_name', 'profile_picture', 'average_rating', 'review_count', 'bio', 'city', 'reviews', 'date_joined')
+
+    def get_average_rating(self, obj):
+        return obj.received_reviews.aggregate(Avg('rating'))['rating__avg']
+
+    def get_review_count(self, obj):
+        return obj.received_reviews.count()
     
-    def create(self, validated_data):
-        # Ruft die sichere Methode zur Erstellung des Benutzers auf.
-        # WICHTIG: Die Methode create_user() sorgt dafür, dass das Passwort 
-        # automatisch und sicher gehasht wird.
-        user = User.objects.create_user(
-            username=validated_data['username'],
-            email=validated_data['email'],
-            password=validated_data['password']
-        )
-        
-        return user
+    def get_reviews(self, obj):
+        reviews = obj.received_reviews.all().order_by('-created_at')[:10]
+        return PublicReviewSerializer(reviews, many=True, context=self.context).data
+
+class PublicUserSerializer(UserSerializer):
+    # This serializer now just inherits from the main UserSerializer
+    # as it contains all necessary public fields.
+    class Meta(UserSerializer.Meta):
+        pass

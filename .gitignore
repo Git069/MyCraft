@@ -1,25 +1,24 @@
-# ------------------------------------
-# 1. Globale Ignore-Datei (Root-Ebene)
-# ------------------------------------
-
-# IDE-Dateien (VS Code, IntelliJ, etc.)
-# VS Code
-.vscode/settings.json
-.vscode/extensions.json
-# IntelliJ IDEA
+# IDE-specific files
 .idea/
+.vscode/
 
-# Spezifische macOS Dateien (da du auf einem Macbook arbeitest)
+# Environment variables
+# Ignore all .env files, but keep the examples
+.env
+.env.*
+!.env.example
+
+# Production environment files
+.env.prod
+
+# macOS specific files
 .DS_Store
 
-# Temporäre Dateien
+# Temporary files
 *~
 *.swp
 
-# Virtuelle Umgebungen (werden in den Unterordnern ignoriert, aber zur Sicherheit hier gelistet)
+# Virtual environments
 venv/
 env/
 .venv/
-
-# Ignoriert den gesamten Konfigurationsordner von JetBrains IDEs
-.idea/
