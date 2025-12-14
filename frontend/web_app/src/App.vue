@@ -11,16 +11,17 @@ import AppLogo from '@/assets/logo.svg'
       
       <!-- 1. Logo-Bereich (ersetzt den "Home"-Link) -->
       <!-- <RouterLink> sorgt dafür, dass ein Klick zur Startseite navigiert -->
-      <RouterLink to="/" class="logo-link">
-        <!-- NEU: Das Logo wird als Bild angezeigt, Pfad kommt vom Import -->
-        <img :src="AppLogo" alt="App Logo" class="logo-image" />
+      <RouterLink :to="{ name: 'home' }" class="logo-link"> 
+        <img  :src="AppLogo" alt="App Logo" class="logo-image" />
       </RouterLink>
       
       <!-- 2. Navigations-Links (rechtsbündig) -->
       <nav class="nav-links">
         <!-- Der "Home"-Link wurde entfernt -->
-        <RouterLink to="/login">Login</RouterLink>
-        <RouterLink to="/register">Registrieren</RouterLink>
+        <!--<RouterLink to="/login">Login</RouterLink>--> 
+        <!--<RouterLink to="/register">Registrieren</RouterLink>-->
+        <RouterLink :to="{ name: 'login' }">Login</RouterLink>
+        <RouterLink :to="{ name: 'register' }">Registrieren</RouterLink>
       </nav>
       
     </div>
@@ -76,7 +77,7 @@ header {
 
 .logo-image {
   /* NEU: Definieren Sie eine feste Höhe, damit das Logo im Nav-Bereich Platz hat */
-  height: clamp(90px, 3vw, 120px); /* Skaliert zwischen 30px und 45px je nach Viewport-Breite */
+  height: clamp(30px, 5vw, 45pxpx); /* Skaliert zwischen 30px und 45px je nach Viewport-Breite */
   width: auto;
 }
 
