@@ -1,12 +1,18 @@
 # Use an official Python runtime as a parent image
 FROM python:3.9-slim
 
+# --- Install GeoDjango System Dependencies ---
+# These are required for PostGIS functionality (GDAL, GEOS, PROJ)
+# Using apk for Alpine-based python:3.9-slim image
+RUN apt-get update && apt-get install -y \
+    binutils \
+    libproj-dev \
+    gdal-bin \
+    libgdal-dev && \
+    rm -rf /var/lib/apt/lists/*
+
 # Set the working directory in the container
 WORKDIR /app
-
-# --- Force Install Pillow ---
-# This is a debugging step to ensure Pillow is installed, bypassing any potential caching issues with requirements.txt
-RUN pip install Pillow
 
 # Copy the requirements file and install dependencies
 COPY requirements.txt .

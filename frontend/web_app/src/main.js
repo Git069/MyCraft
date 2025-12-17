@@ -2,19 +2,35 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
+import { useAuthStore } from '@/stores/auth'
 import './PublicStyles.css'
-import { useAuthStore } from './stores/auth'
 
-async function initializeApp() {
-  const app = createApp(App)
+// --- LEAFLET ICON FIX FOR VITE ---
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 
-  app.use(createPinia())
-  app.use(router)
+// Manually import marker images
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 
-  const authStore = useAuthStore();
-  await authStore.initializeAuth();
+// Fix Leaflet's default icon paths
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: markerIcon2x,
+  iconUrl: markerIcon,
+  shadowUrl: markerShadow,
+});
+// ---------------------------------
 
-  app.mount('#app')
-}
+const app = createApp(App)
+const pinia = createPinia()
 
-initializeApp();
+app.use(pinia)
+app.use(router)
+
+// Initialize auth store (check for token)
+const authStore = useAuthStore()
+authStore.initializeAuth()
+
+app.mount('#app')

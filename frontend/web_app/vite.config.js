@@ -13,18 +13,14 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))
-    },
+    }
   },
   server: {
-    // This is required to make the server accessible from outside the container
-    host: '0.0.0.0',
-    // This is required for HMR to work in a Docker container
-    hmr: {
-      clientPort: 5173,
-    },
-    // This is required for file changes to be detected in a Docker container
+    host: true,        // Listen on all addresses, including 0.0.0.0
+    port: 5173,
+    strictPort: true,  // Exit if port is already in use
     watch: {
-      usePolling: true,
-    },
-  },
+      usePolling: true // Use polling for file system events
+    }
+  }
 })

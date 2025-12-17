@@ -4,15 +4,15 @@ import { useRouter } from 'vue-router';
 import StarRating from './StarRating.vue';
 
 const props = defineProps({
-  job: { type: Object, required: true },
+  service: { type: Object, required: true }, // Renamed from 'job' to 'service'
   showControls: { type: Boolean, default: false }
 });
 
 const emit = defineEmits(['delete', 'mark-completed', 'cancel', 'review']);
 const router = useRouter();
 
-const goToDetail = () => router.push({ name: 'ServiceDetail', params: { id: props.job.id } });
-const goToEdit = () => router.push({ name: 'ServiceEdit', params: { id: props.job.id } }); // FIX: Use 'ServiceEdit'
+const goToDetail = () => router.push({ name: 'ServiceDetail', params: { id: props.service.id } });
+const goToEdit = () => router.push({ name: 'ServiceEdit', params: { id: props.service.id } });
 
 const tradeImages = {
   PLUMBER: 'https://images.unsplash.com/photo-1581244277943-fe4a9c777189?auto=format&fit=crop&w=400&q=80',
@@ -23,21 +23,21 @@ const tradeImages = {
   OTHER: 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?auto=format&fit=crop&w=400&q=80'
 };
 
-const jobImage = computed(() => tradeImages[props.job.trade] || tradeImages.OTHER);
-const formattedPrice = computed(() => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(props.job.price || 0));
+const serviceImage = computed(() => tradeImages[props.service.trade] || tradeImages.OTHER);
+const formattedPrice = computed(() => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(props.service.price || 0));
 const formattedDate = computed(() => {
-  if (!props.job.execution_date) return 'Termin flexibel';
-  return new Date(props.job.execution_date).toLocaleDateString('de-DE', { day: 'numeric', month: 'short' });
+  if (!props.service.execution_date) return 'Termin flexibel';
+  return new Date(props.service.execution_date).toLocaleDateString('de-DE', { day: 'numeric', month: 'short' });
 });
-const displayTitle = computed(() => `${props.job.title} in ${props.job.city}`);
+const displayTitle = computed(() => `${props.service.title} in ${props.service.city}`);
 </script>
 
 <template>
   <div class="job-card">
     <div class="image-container" @click="goToDetail">
-      <img :src="jobImage" :alt="job.title" class="job-image" />
-      <div v-if="showControls" class="status-badge" :class="`status-${job.status.toLowerCase()}`">
-        {{ job.status }}
+      <img :src="serviceImage" :alt="service.title" class="job-image" />
+      <div v-if="showControls" class="status-badge" :class="`status-${service.status.toLowerCase()}`">
+        {{ service.status }}
       </div>
     </div>
 
@@ -47,23 +47,23 @@ const displayTitle = computed(() => `${props.job.title} in ${props.job.city}`);
     </div>
 
     <div v-if="showControls" class="card-footer-actions" @click.stop>
-      <div v-if="job.status === 'OPEN'" class="action-group">
+      <div v-if="service.status === 'OPEN'" class="action-group">
         <button class="action-btn edit" @click="goToEdit">Bearbeiten</button>
-        <button class="action-btn cancel" @click="$emit('cancel', job.id)">Stornieren</button>
+        <button class="action-btn cancel" @click="$emit('cancel', service.id)">Stornieren</button>
       </div>
-      <div v-else-if="job.status === 'BOOKED'" class="action-group">
-        <button class="action-btn complete" @click="$emit('mark-completed', job.id)">Auftrag abschließen</button>
+      <div v-else-if="service.status === 'BOOKED'" class="action-group">
+        <button class="action-btn complete" @click="$emit('mark-completed', service.id)">Auftrag abschließen</button>
       </div>
-      <div v-else-if="job.status === 'COMPLETED'">
-        <div v-if="!job.review" class="action-group">
-          <button class="action-btn review" @click="$emit('review', job)">Handwerker bewerten</button>
+      <div v-else-if="service.status === 'COMPLETED'">
+        <div v-if="!service.review" class="action-group">
+          <button class="action-btn review" @click="$emit('review', service)">Handwerker bewerten</button>
         </div>
         <div v-else class="review-display">
-          <StarRating :modelValue="job.review.rating" :readonly="true" />
+          <StarRating :modelValue="service.review.rating" :readonly="true" />
         </div>
       </div>
       <div v-else class="action-group disabled">
-        <span>{{ job.status === 'CANCELLED' ? 'Storniert' : 'Abgeschlossen' }}</span>
+        <span>{{ service.status === 'CANCELLED' ? 'Storniert' : 'Abgeschlossen' }}</span>
       </div>
     </div>
   </div>

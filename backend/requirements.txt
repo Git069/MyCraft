@@ -1,8 +1,10 @@
 Django
 djangorestframework
-django-cors-headers
+django-cors-headers # Required for CORS
 gunicorn
 djoser
 djangorestframework-simplejwt
 django-filter
 Pillow
+psycopg2-binary
+djangorestframework-gis

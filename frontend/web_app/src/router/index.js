@@ -10,7 +10,7 @@ import JobDetailView from '@/views/JobDetailView.vue'
 import InboxView from '@/views/InboxView.vue'
 import ProfileView from '@/views/ProfileView.vue'
 import DashboardView from '@/views/DashboardView.vue'
-import EditServiceView from '@/views/EditServiceView.vue' // Import new view
+import EditServiceView from '@/views/EditServiceView.vue'
 import CraftsmanProfileView from '@/views/CraftsmanProfileView.vue'
 
 const router = createRouter({
@@ -20,16 +20,24 @@ const router = createRouter({
     { path: '/login', name: 'Login', component: LoginView },
     { path: '/register', name: 'Register', component: RegisterView },
     { path: '/marketplace', name: 'JobMarketplace', component: JobMarketplaceView },
-    { path: '/jobs/:id', name: 'JobDetail', component: JobDetailView }, // Keep for legacy URLs, or redirect
-    { path: '/services/:id', name: 'ServiceDetail', component: JobDetailView }, // New canonical URL
+    
+    // Corrected Service Routes
+    { path: '/services/:id', name: 'ServiceDetail', component: JobDetailView },
     { 
-      path: '/services/:id/edit', // New Edit Route
+      path: '/services/:id/edit',
       name: 'ServiceEdit', 
       component: EditServiceView, 
       meta: { requiresAuth: true, requiresCraftsman: true } 
     },
+    { 
+      path: '/create-service', // Renamed from create-job
+      name: 'CreateService', 
+      component: CreateJobView, // The view component can be renamed later
+      meta: { requiresAuth: true, requiresCraftsman: true } 
+    },
+
+    // Other routes
     { path: '/craftsman/:id', name: 'CraftsmanProfile', component: CraftsmanProfileView },
-    { path: '/create-job', name: 'CreateJob', component: CreateJobView, meta: { requiresAuth: true, requiresCraftsman: true } },
     { path: '/become-craftsman', name: 'BecomeCraftsman', component: BecomeCraftsmanView, meta: { requiresAuth: true } },
     { path: '/inbox', name: 'Inbox', component: InboxView, meta: { requiresAuth: true } },
     { path: '/profile', name: 'Profile', component: ProfileView, meta: { requiresAuth: true } },
