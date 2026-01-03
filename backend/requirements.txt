@@ -8,3 +8,4 @@ django-filter
 Pillow
 psycopg2-binary
 djangorestframework-gis
+geopy

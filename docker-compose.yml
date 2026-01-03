@@ -1,6 +1,4 @@
 # Base configuration for production
-version: "3.8"
-
 services:
   backend:
     build:

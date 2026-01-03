@@ -31,8 +31,8 @@ const getCoords = (service) => {
       <l-marker
         v-for="service in services"
         :key="service.id"
-        :lat-lng="getCoords(service)"
-      >
+        v-if="getCoords(service)" :lat-lng="getCoords(service)">
+
         <l-popup>
           <strong>{{ service.title }}</strong><br>
           <router-link :to="{ name: 'ServiceDetail', params: { id: service.id } }">

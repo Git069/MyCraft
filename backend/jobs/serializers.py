@@ -12,17 +12,24 @@ class JobSerializer(GeoFeatureModelSerializer):
     Serializer for the Service (Job) model, now with GeoJSON support.
     """
     contractor_username = serializers.CharField(source='contractor.username', read_only=True)
-    review = SimpleReviewSerializer(read_only=True, required=False)
+    review = serializers.SerializerMethodField()
 
     class Meta:
         model = Job
-        geo_field = "location" # Specify the geometry field
+        geo_field = "location"
+        # FIX: location (Pflicht für GeoJSON), zip_code & city (damit sie gespeichert werden) hinzugefügt
         fields = [
-            'id', 'title', 'description', 'trade', 'address', 
-            'execution_date', 'price', 'status', 'created_at', 'updated_at', 
+            'id', 'title', 'description', 'trade', 'address', 'zip_code', 'city',
+            'location', 'execution_date', 'price', 'status', 'created_at', 'updated_at',
             'contractor', 'contractor_username', 'review'
         ]
-        read_only_fields = ['contractor', 'status']
+        read_only_fields = ['contractor', 'status', 'location']  # location ist read-only, da es im Backend berechnet wird (oder null bleibt)
+
+    def get_review(self, obj):
+        # Prüft sicher, ob Reviews existieren, um AttributeError zu vermeiden
+        if hasattr(obj, 'reviews') and obj.reviews.exists():
+            return SimpleReviewSerializer(obj.reviews.first()).data
+        return None
 
     def validate_price(self, value):
         if value is not None and value < 0:

@@ -70,7 +70,7 @@ onUnmounted(() => {
 
         <RouterLink
           v-if="isLoggedIn && isCraftsman"
-          :to="{ name: 'CreateJob' }"
+          :to="{ name: 'CreateService' }"
           class="become-host-link"
         >
           Auftrag erstellen
@@ -83,7 +83,7 @@ onUnmounted(() => {
             </div>
 
             <!-- Use UserAvatar component -->
-            <UserAvatar :src="fullImageUrl" :name="user?.username" :size="30" />
+            <UserAvatar :src="fullImageUrl" :name="user?.username || ''" :size="30" />
           </button>
 
           <div v-if="isMenuOpen" class="dropdown-menu">

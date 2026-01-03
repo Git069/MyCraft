@@ -1,6 +1,4 @@
 # Overrides for local development
-version: "3.8"
-
 services:
   backend:
     build:

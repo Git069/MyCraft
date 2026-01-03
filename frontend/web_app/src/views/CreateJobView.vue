@@ -16,6 +16,7 @@ const jobData = ref({
   trade: '',
   title: '',
   description: '',
+  adress: '',
   zip_code: '',
   city: '',
   price: null,
@@ -150,6 +151,15 @@ const handleSubmit = async () => {
 
       <!-- STEP 3: Location -->
       <div v-if="currentStep === 3" class="step-body">
+        <div class="form-group">
+        <label for="address">Straße & Hausnummer (Optional)</label>
+        <input
+          id="address"
+          v-model="jobData.address"
+          type="text"
+          placeholder="Für genauere Standortbestimmung auf der Karte"
+        />
+      </div>
         <div class="form-group">
           <label for="zip">Postleitzahl</label>
           <input

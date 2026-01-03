@@ -3,9 +3,11 @@ import { ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '@/api';
 import { useToastStore } from '@/stores/toast';
+import { useAuthStore } from '@/stores/auth';
 
 const router = useRouter();
 const toastStore = useToastStore();
+const authStore = useAuthStore();
 
 const email = ref('');
 const password = ref('');
@@ -40,7 +42,11 @@ const handleRegister = async () => {
       password: password.value,
       re_password: password2.value,
     });
-    router.push({ name: 'Login', query: { registered: 'true' } });
+    
+    // Auto-login after successful registration
+    await authStore.login({ username: email.value, password: password.value });
+    router.push({ name: 'Home' });
+    
   } catch (error) {
     const errorMessage = error.response?.data?.password?.[0] || 'Ein Fehler ist aufgetreten.';
     toastStore.addToast(errorMessage, 'error');

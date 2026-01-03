@@ -2,6 +2,8 @@ from django.contrib.gis.db import models as gis_models
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils.translation import gettext_lazy as _
+from geopy.geocoders import Nominatim
+from django.contrib.gis.geos import Point
 
 class Job(models.Model):
     """
@@ -45,6 +47,20 @@ class Job(models.Model):
 
     def __str__(self):
         return f"{self.title} ({self.get_status_display()})"
+
+
+    def save(self, *args, **kwargs):
+        if not self.location and (self.address or (self.city and self.zip_code)):
+            try:
+                geolocator = Nominatim(user_agent="mycraft_app_backend")
+                # Baue Adresse: "Musterstraße 1, 12345 Musterstadt"
+                query = f"{self.address}, {self.zip_code} {self.city}" if self.address else f"{self.zip_code} {self.city}"
+                loc = geolocator.geocode(query)
+                if loc:
+                    self.location = Point(loc.longitude, loc.latitude)
+            except Exception as e:
+                print(f"Geocoding Error: {e}")
+        super().save(*args, **kwargs)
 
 class Booking(models.Model):
     """
