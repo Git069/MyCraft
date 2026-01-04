@@ -1,5 +1,34 @@
 <script setup>
-// ... (script setup remains the same)
+import { ref, onMounted } from 'vue';
+import api from '@/api';
+import JobCard from '@/components/JobCard.vue';
+import JobCardSkeleton from '@/components/JobCardSkeleton.vue';
+import { useToastStore } from '@/stores/toast'; // Falls du Toast nutzt
+
+const myServices = ref([]); // Hier kommen die Jobs rein
+const loading = ref(true);
+const activeTab = ref('my-services'); // Oder wie auch immer deine Tabs heißen
+
+const fetchMyServices = async () => {
+  loading.value = true;
+  try {
+    const response = await api.getMyServices();
+
+    // WICHTIG: api.js transformiert GeoJSON und packt die Liste in 'results'
+    // Wenn hier nur 'response.data' steht, ist das der Fehler!
+    myServices.value = response.data.results || [];
+
+    console.log("Geladene Services:", myServices.value); // Debugging
+  } catch (error) {
+    console.error("Fehler beim Laden der Services:", error);
+  } finally {
+    loading.value = false;
+  }
+};
+
+onMounted(() => {
+  fetchMyServices();
+});
 </script>
 
 <template>
@@ -32,5 +61,24 @@
 </template>
 
 <style scoped>
-/* ... (styles remain the same) ... */
+.dashboard-grid {
+  display: grid;
+  /* Das ist der Zaubertrick für Responsive Design:
+     Erstelle so viele Spalten wie möglich (auto-fill),
+     aber jede Spalte muss mindestens 280px breit sein (minmax).
+     Den Rest (1fr) verteilt er gleichmäßig.
+  */
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 24px; /* Abstand zwischen den Karten */
+  margin-top: 20px;
+  width: 100%;
+}
+
+/* Optional: Damit es auf sehr kleinen Handys nicht am Rand klebt */
+@media (max-width: 600px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr; /* Auf Handys volle Breite, aber mit Abstand */
+    gap: 16px;
+  }
+}
 </style>

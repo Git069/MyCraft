@@ -20,17 +20,38 @@ apiClient.interceptors.response.use(
 
 // Helper to transform GeoJSON to flat objects for UI components
 const transformGeoJSON = (response) => {
+  // FALL 1: API liefert direkt ein GeoJSON FeatureCollection (z.B. bei 'my_jobs' oder ohne Pagination)
   if (response.data && response.data.type === 'FeatureCollection') {
-    // It's GeoJSON! Extract properties and add geometry
     const features = response.data.features.map(feature => ({
       ...feature.properties,
-      id: feature.id, // Ensure ID is top-level
-      location: feature.geometry // Keep geometry if needed
+      id: feature.id, // ID auf oberste Ebene holen
+      location: feature.geometry // Geometrie behalten
     }));
-    // Wrap it back in a structure that mimics paginated response if needed, 
-    // or just return the array. Let's return an object with 'results' to match old API style.
+    // Wir bauen die Antwort so um, dass 'results' das flache Array enthält
     return { ...response, data: { results: features } };
   }
+
+  // FALL 2: API liefert Pagination (Standard auf der Home View)
+  // Struktur ist: { count: 10, next: "...", results: { type: "FeatureCollection", features: [...] } }
+  if (response.data && response.data.results && response.data.results.type === 'FeatureCollection') {
+      const features = response.data.results.features.map(feature => ({
+        ...feature.properties,
+        id: feature.id,
+        location: feature.geometry
+      }));
+
+      // Wir überschreiben 'results' (das GeoJSON Objekt) mit unserem flachen Array.
+      // So behalten wir 'count' und 'next' für späteres "Mehr laden" bei, aber die UI bekommt ihr Array.
+      return {
+          ...response,
+          data: {
+              ...response.data,
+              results: features
+          }
+      };
+  }
+
+  // Fall 3: Normale Antwort oder Fehler
   return response;
 };
 
