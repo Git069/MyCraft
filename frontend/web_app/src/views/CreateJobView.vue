@@ -16,11 +16,19 @@ const jobData = ref({
   trade: '',
   title: '',
   description: '',
-  adress: '',
+  address: '',
   zip_code: '',
   city: '',
   price: null,
+  // NEU: Koordinaten Felder (werden nicht angezeigt, aber gesendet)
+  lat: null,
+  lng: null
 });
+
+// --- Adress-Vorschläge State (Neu) ---
+const addressSuggestions = ref([]);
+const showSuggestions = ref(false);
+let debounceTimeout = null;
 
 // --- Options ---
 const tradeOptions = [
@@ -44,6 +52,7 @@ const isStepValid = computed(() => {
     case 2: // Details
       return jobData.value.title.length > 5 && jobData.value.description.length > 10;
     case 3: // Location
+      // Validierung: PLZ und Stadt müssen vorhanden sein (manuell oder durch Suche)
       return jobData.value.zip_code.length >= 4 && !!jobData.value.city;
     case 4: // Price
       return true;
@@ -51,6 +60,54 @@ const isStepValid = computed(() => {
       return false;
   }
 });
+
+// --- Adress-Logik (Neu) ---
+const onAddressInput = () => {
+  // Timeout zurücksetzen
+  if (debounceTimeout) clearTimeout(debounceTimeout);
+
+  // Erst ab 3 Zeichen suchen
+  if (jobData.value.address.length < 3) {
+    addressSuggestions.value = [];
+    showSuggestions.value = false;
+    return;
+  }
+
+  // API erst nach kurzer Tipp-Pause abfragen (Debounce)
+  debounceTimeout = setTimeout(async () => {
+    try {
+      const response = await api.suggestAddresses(jobData.value.address);
+      addressSuggestions.value = response.data;
+      showSuggestions.value = response.data.length > 0;
+    } catch (e) {
+      console.error("Adress-Suche fehlgeschlagen", e);
+    }
+  }, 400);
+};
+
+const selectAddress = (suggestion) => {
+  const street = suggestion.road || '';
+  const number = suggestion.house_number || '';
+
+  jobData.value.address = street + (number ? ` ${number}` : '');
+  jobData.value.zip_code = suggestion.zip_code || '';
+  jobData.value.city = suggestion.city || '';
+
+  // NEU: Koordinaten aus dem Vorschlag übernehmen!
+  // Nominatim liefert Strings, wir wandeln sie in Zahlen um
+  jobData.value.lat = parseFloat(suggestion.lat);
+  jobData.value.lng = parseFloat(suggestion.lng);
+
+  showSuggestions.value = false;
+  addressSuggestions.value = [];
+};
+
+const onBlurAddress = () => {
+  // Kurze Verzögerung, damit ein Klick auf die Liste noch registriert wird bevor sie verschwindet
+  setTimeout(() => {
+    showSuggestions.value = false;
+  }, 100);
+};
 
 // --- Actions ---
 const nextStep = () => {
@@ -110,7 +167,6 @@ const handleSubmit = async () => {
 
       <div v-if="errorMessage" class="error-message">{{ errorMessage }}</div>
 
-      <!-- STEP 1: Category Selection -->
       <div v-if="currentStep === 1" class="step-body">
         <div class="trade-grid">
           <div
@@ -126,7 +182,6 @@ const handleSubmit = async () => {
         </div>
       </div>
 
-      <!-- STEP 2: Details -->
       <div v-if="currentStep === 2" class="step-body">
         <div class="form-group">
           <label for="title">Titel deines Angebots</label>
@@ -149,24 +204,41 @@ const handleSubmit = async () => {
         </div>
       </div>
 
-      <!-- STEP 3: Location -->
       <div v-if="currentStep === 3" class="step-body">
-        <div class="form-group">
-        <label for="address">Straße & Hausnummer (Optional)</label>
-        <input
-          id="address"
-          v-model="jobData.address"
-          type="text"
-          placeholder="Für genauere Standortbestimmung auf der Karte"
-        />
-      </div>
+
+        <div class="form-group relative-group">
+          <label for="address">Straße & Hausnummer</label>
+          <input
+            id="address"
+            v-model="jobData.address"
+            type="text"
+            placeholder="Tippe deine Adresse ein..."
+            @input="onAddressInput"
+            @blur="onBlurAddress"
+            autocomplete="off"
+          />
+
+          <div v-if="showSuggestions" class="suggestions-dropdown">
+            <div
+              v-for="(item, index) in addressSuggestions"
+              :key="index"
+              class="suggestion-item"
+              @mousedown.prevent="selectAddress(item)"
+            >
+              <span class="suggestion-main">{{ item.road }} {{ item.house_number }}</span>
+              <span class="suggestion-sub">{{ item.zip_code }} {{ item.city }}, {{ item.display_name }}</span>
+            </div>
+          </div>
+          <p class="hint">Wähle einen Vorschlag, um PLZ und Stadt automatisch zu füllen.</p>
+        </div>
+
         <div class="form-group">
           <label for="zip">Postleitzahl</label>
           <input
             id="zip"
             v-model="jobData.zip_code"
             type="text"
-            placeholder="Dein Einsatzgebiet"
+            placeholder="Wird automatisch ausgefüllt"
           />
         </div>
         <div class="form-group">
@@ -175,12 +247,11 @@ const handleSubmit = async () => {
             id="city"
             v-model="jobData.city"
             type="text"
-            placeholder="z.B. Musterstadt"
+            placeholder="Wird automatisch ausgefüllt"
           />
         </div>
       </div>
 
-      <!-- STEP 4: Budget -->
       <div v-if="currentStep === 4" class="step-body">
         <div class="form-group">
           <label for="price">Dein Preis für dieses Angebot</label>
@@ -209,7 +280,7 @@ const handleSubmit = async () => {
         >
           Zurück
         </button>
-        <div v-else></div> <!-- Spacer -->
+        <div v-else></div>
 
         <button
           @click="nextStep"
@@ -225,152 +296,64 @@ const handleSubmit = async () => {
 </template>
 
 <style scoped>
-/* Styles remain the same */
-.wizard-container {
-  display: flex;
-  flex-direction: column;
-  min-height: calc(100vh - 80px);
-  background-color: white;
-}
-.progress-bar-container {
-  height: 4px;
-  background-color: #f0f0f0;
-  width: 100%;
-}
-.progress-bar-fill {
-  height: 100%;
-  background-color: var(--color-primary);
-  transition: width 0.3s ease;
-}
-.wizard-content {
-  flex-grow: 1;
-  max-width: 600px;
-  width: 100%;
-  margin: 0 auto;
-  padding: 40px 24px 100px;
-}
-.step-header {
-  margin-bottom: 32px;
-}
-.step-indicator {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--color-text-light);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-.step-header h1 {
-  font-size: 2rem;
-  margin-top: 8px;
-  color: var(--color-text);
-}
-.trade-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 16px;
-}
-.trade-card {
-  border: 2px solid var(--color-border);
-  border-radius: 12px;
-  padding: 24px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-}
-.trade-card:hover {
-  border-color: var(--color-text-light);
-}
-.trade-card.selected {
-  border-color: var(--color-primary);
-  background-color: #f0f4ff;
-  box-shadow: 0 0 0 1px var(--color-primary);
-}
-.trade-icon {
-  font-size: 2.5rem;
-  margin-bottom: 12px;
-}
-.trade-label {
-  font-weight: 600;
-  font-size: 0.95rem;
-}
-.form-group {
-  margin-bottom: 24px;
-}
-.form-group label {
-  display: block;
-  font-weight: 600;
-  margin-bottom: 8px;
-  color: var(--color-text);
-}
-input, textarea {
-  width: 100%;
-  padding: 16px;
-  font-size: 1.1rem;
+/* Bestehende Styles */
+.wizard-container { display: flex; flex-direction: column; min-height: calc(100vh - 80px); background-color: white; }
+.progress-bar-container { height: 4px; background-color: #f0f0f0; width: 100%; }
+.progress-bar-fill { height: 100%; background-color: var(--color-primary); transition: width 0.3s ease; }
+.wizard-content { flex-grow: 1; max-width: 600px; width: 100%; margin: 0 auto; padding: 40px 24px 100px; }
+.step-header { margin-bottom: 32px; }
+.step-indicator { font-size: 0.9rem; font-weight: 600; color: var(--color-text-light); text-transform: uppercase; letter-spacing: 0.05em; }
+.step-header h1 { font-size: 2rem; margin-top: 8px; color: var(--color-text); }
+.trade-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; }
+.trade-card { border: 2px solid var(--color-border); border-radius: 12px; padding: 24px; cursor: pointer; transition: all 0.2s ease; display: flex; flex-direction: column; align-items: center; text-align: center; }
+.trade-card:hover { border-color: var(--color-text-light); }
+.trade-card.selected { border-color: var(--color-primary); background-color: #f0f4ff; box-shadow: 0 0 0 1px var(--color-primary); }
+.trade-icon { font-size: 2.5rem; margin-bottom: 12px; }
+.trade-label { font-weight: 600; font-size: 0.95rem; }
+.form-group { margin-bottom: 24px; }
+.form-group label { display: block; font-weight: 600; margin-bottom: 8px; color: var(--color-text); }
+input, textarea { width: 100%; padding: 16px; font-size: 1.1rem; border: 1px solid var(--color-border); border-radius: 8px; transition: border-color 0.2s; }
+input:focus, textarea:focus { border-color: var(--color-text); outline: none; }
+.price-input-wrapper { position: relative; }
+.currency-symbol { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); font-weight: 600; color: var(--color-text-light); }
+.hint { font-size: 0.9rem; color: var(--color-text-light); margin-top: 8px; }
+.wizard-footer { position: fixed; bottom: 0; left: 0; width: 100%; background-color: white; border-top: 1px solid var(--color-border); padding: 16px 0; z-index: 10; }
+.footer-content { display: flex; justify-content: space-between; align-items: center; }
+.back-btn { background: none; border: none; font-weight: 600; text-decoration: underline; cursor: pointer; font-size: 1rem; color: var(--color-text); }
+.next-btn { padding: 14px 32px; font-size: 1rem; }
+.next-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.error-message { background-color: #fff0f0; color: var(--color-error); padding: 12px; border-radius: 8px; margin-bottom: 24px; text-align: center; }
+
+/* --- NEUE STYLES FÜR AUTOCOMPLETE --- */
+.relative-group { position: relative; }
+
+.suggestions-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
   border: 1px solid var(--color-border);
   border-radius: 8px;
-  transition: border-color 0.2s;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  z-index: 100;
+  max-height: 250px;
+  overflow-y: auto;
+  margin-top: 4px;
 }
-input:focus, textarea:focus {
-  border-color: var(--color-text);
-  outline: none;
-}
-.price-input-wrapper {
-  position: relative;
-}
-.currency-symbol {
-  position: absolute;
-  right: 16px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-weight: 600;
-  color: var(--color-text-light);
-}
-.hint {
-  font-size: 0.9rem;
-  color: var(--color-text-light);
-  margin-top: 8px;
-}
-.wizard-footer {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  background-color: white;
-  border-top: 1px solid var(--color-border);
-  padding: 16px 0;
-  z-index: 10;
-}
-.footer-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.back-btn {
-  background: none;
-  border: none;
-  font-weight: 600;
-  text-decoration: underline;
+
+.suggestion-item {
+  padding: 12px 16px;
   cursor: pointer;
-  font-size: 1rem;
-  color: var(--color-text);
+  border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  flex-direction: column;
+  transition: background-color 0.1s;
 }
-.next-btn {
-  padding: 14px 32px;
-  font-size: 1rem;
-}
-.next-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.error-message {
-  background-color: #fff0f0;
-  color: var(--color-error);
-  padding: 12px;
-  border-radius: 8px;
-  margin-bottom: 24px;
-  text-align: center;
-}
+
+.suggestion-item:last-child { border-bottom: none; }
+.suggestion-item:hover { background-color: #f5f5f5; }
+
+.suggestion-main { font-weight: 600; font-size: 0.95rem; color: var(--color-text); }
+.suggestion-sub { font-size: 0.8rem; color: #777; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 </style>

@@ -2,33 +2,43 @@
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 
+const props = defineProps({
+  enableRouting: {
+    type: Boolean,
+    default: true
+  }
+});
+
+// Event definieren, um Filter an HomeView zu senden
+const emit = defineEmits(['search-triggered']);
+
 const router = useRouter();
 const searchTerm = ref('');
 const location = ref('');
-const activeField = ref(null); // 'search' | 'location' | null
+const activeField = ref(null);
 
 // --- DATA: Smart Suggestions ---
 const categories = [
   {
-    id: 'painter',
+    id: 'PAINTER',
     title: 'Maler & Lackierer',
     desc: 'Für Wände, Fassaden & Lackierarbeiten',
     icon: '🎨'
   },
   {
-    id: 'electrician',
+    id: 'ELECTRICIAN',
     title: 'Elektriker',
     desc: 'Für Installationen, Reparaturen & Smart Home',
     icon: '⚡'
   },
   {
-    id: 'plumber',
+    id: 'PLUMBER',
     title: 'Sanitär & Heizung',
     desc: 'Rohrreinigung, Bad-Sanierung & Heizungswartung',
     icon: '💧'
   },
   {
-    id: 'carpenter',
+    id: 'CARPENTER',
     title: 'Tischler',
     desc: 'Möbelbau, Fenster & Türen',
     icon: '🪚'
@@ -65,6 +75,23 @@ const locations = [
 
 // --- ACTIONS ---
 
+const executeSearch = (payload) => {
+  // Payload enthält z.B. { search: '...', city: '...', trade: '...' }
+
+  if (props.enableRouting) {
+    // Standardverhalten: Weiterleitung zum Marktplatz
+    router.push({
+      name: 'JobMarketplace',
+      query: payload
+    });
+  } else {
+    // Inline Verhalten: Event an Parent senden (z.B. HomeView)
+    emit('search-triggered', payload);
+  }
+
+  activeField.value = null; // Dropdown schließen
+};
+
 const handleSearch = () => {
   activeField.value = null; // Close dropdown
   router.push({
@@ -87,8 +114,15 @@ const onBlur = () => {
 };
 
 const selectCategory = (category) => {
+  // Wenn eine Kategorie geklickt wird
+  // Optional: Den Text ins Feld setzen, damit der User sieht was passiert
   searchTerm.value = category.title;
-  activeField.value = null;
+
+  // WICHTIG: Wir senden die ID (z.B. PAINTER) als 'trade' Filter
+  executeSearch({
+    trade: category.id,
+    search: '' // Wenn man Kategorie wählt, leeren wir oft die Textsuche oder kombinieren sie
+  });
 };
 
 const selectLocation = (loc) => {

@@ -11,17 +11,33 @@ const loading = ref(true);
 const isLocating = ref(false);
 const toastStore = useToastStore();
 
-const fetchServices = async (params = { page_size: 8 }) => {
+const defaultParams = { page_size: 8 };
+
+// Diese Funktion akzeptiert jetzt Filter-Parameter
+const fetchServices = async (filterParams = {}) => {
   loading.value = true;
+  const requestParams = { ...defaultParams, ...filterParams };
+
   try {
-    const response = await api.getServices(params);
-    recentServices.value = response.data.results;
+    const response = await api.getServices(requestParams);
+
+    // FIX: Filtere alle Ergebnisse heraus, die null/undefined sind
+    const results = response.data.results || [];
+    recentServices.value = results.filter(item => item && item.id); // Nur Items mit ID behalten
+
   } catch (error) {
     console.error("Failed to fetch services:", error);
     toastStore.addToast("Fehler beim Laden der Angebote.", "error");
   } finally {
     loading.value = false;
   }
+};
+
+// Handler für das Event aus der JobSearch Komponente
+const handleSearchTriggered = (filters) => {
+  // filters ist z.B. { trade: 'PAINTER', search: '' } oder { search: 'Test', city: 'Berlin' }
+  console.log("Filtering Home View with:", filters);
+  fetchServices(filters);
 };
 
 const findNearby = () => {

@@ -18,43 +18,54 @@ apiClient.interceptors.response.use(
   }
 );
 
+
 // Helper to transform GeoJSON to flat objects for UI components
+const flattenFeature = (feature) => {
+  if (!feature || !feature.properties) return feature;
+  return {
+    ...feature.properties,
+    id: feature.id,        // ID von der obersten Ebene holen
+    location: feature.geometry // Geometrie sichern
+  };
+};
+
 const transformGeoJSON = (response) => {
-  // FALL 1: API liefert direkt ein GeoJSON FeatureCollection (z.B. bei 'my_jobs' oder ohne Pagination)
-  if (response.data && response.data.type === 'FeatureCollection') {
-    const features = response.data.features.map(feature => ({
-      ...feature.properties,
-      id: feature.id, // ID auf oberste Ebene holen
-      location: feature.geometry // Geometrie behalten
-    }));
-    // Wir bauen die Antwort so um, dass 'results' das flache Array enthält
-    return { ...response, data: { results: features } };
+  const data = response.data;
+
+  // FALL 1: API liefert direkt ein GeoJSON FeatureCollection
+  if (data && data.type === 'FeatureCollection' && Array.isArray(data.features)) {
+    return {
+        ...response,
+        data: { results: data.features.map(flattenFeature) }
+    };
   }
 
-  // FALL 2: API liefert Pagination (Standard auf der Home View)
-  // Struktur ist: { count: 10, next: "...", results: { type: "FeatureCollection", features: [...] } }
-  if (response.data && response.data.results && response.data.results.type === 'FeatureCollection') {
-      const features = response.data.results.features.map(feature => ({
-        ...feature.properties,
-        id: feature.id,
-        location: feature.geometry
-      }));
-
-      // Wir überschreiben 'results' (das GeoJSON Objekt) mit unserem flachen Array.
-      // So behalten wir 'count' und 'next' für späteres "Mehr laden" bei, aber die UI bekommt ihr Array.
+  // FALL 2: API liefert Pagination, und 'results' ist eine FeatureCollection (Standard DRF GIS)
+  if (data && data.results && data.results.type === 'FeatureCollection' && Array.isArray(data.results.features)) {
       return {
           ...response,
           data: {
-              ...response.data,
-              results: features
+              ...data,
+              results: data.results.features.map(flattenFeature)
           }
       };
   }
 
-  // Fall 3: Normale Antwort oder Fehler
+  // FALL 3: API liefert Pagination, aber 'results' ist direkt ein Array von Features
+  // (Sicherheitsnetz, falls die Struktur leicht abweicht)
+  if (data && Array.isArray(data.results) && data.results.length > 0 && data.results[0].properties) {
+      return {
+          ...response,
+          data: {
+              ...data,
+              results: data.results.map(flattenFeature)
+          }
+      };
+  }
+
+  // Kein GeoJSON erkannt -> Original zurückgeben
   return response;
 };
-
 export default {
   // ... (Auth & User functions remain same)
   register(userData) { return apiClient.post('/auth/users/', userData); },
@@ -64,6 +75,11 @@ export default {
   getUserDetails(userId) { return apiClient.get(`/auth/users/${userId}/`); },
   uploadProfilePicture(formData) { return apiClient.patch('/auth/upload-profile-picture/', formData, { headers: { 'Content-Type': 'multipart/form-data' } }); },
   becomeCraftsman(profileData) { return apiClient.post('/auth/become-craftsman/', profileData); },
+
+    // Füge diese Funktion hinzu:
+  suggestAddresses(query) {
+    return apiClient.get('/services/suggest_address/', { params: { q: query } });
+  },
 
   // --- SERVICES (GeoJSON aware) ---
   createService(serviceData) { 
@@ -95,6 +111,7 @@ export default {
     const response = await apiClient.get('/services/my-jobs/');
     return transformGeoJSON(response);
   },
+
 
   // ... (Aliases and other functions remain same)
   createJob(jobData) { return this.createService(jobData); },

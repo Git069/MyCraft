@@ -8,21 +8,97 @@ from django.contrib.gis.db.models.functions import Distance
 from .models import Job, Booking
 from .serializers import JobSerializer, BookingSerializer
 from .permissions import IsOwnerOrReadOnly
+from geopy.geocoders import Nominatim # Stelle sicher, dass das importiert ist
+
 
 class JobViewSet(viewsets.ModelViewSet):
     """
     Manages Services (the permanent listings by craftsmen).
     """
-    # OPTIMIZATION: Use select_related to fetch contractor and profile in one query
+    # Basis-Queryset mit Optimierungen
     queryset = Job.objects.all().filter(status=Job.Status.OPEN).select_related('contractor__profile')
     serializer_class = JobSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
 
+    @action(detail=False, methods=['get'])
+    def suggest_address(self, request):
+        query = request.query_params.get('q')
+        if not query or len(query) < 3:
+            return Response([])
+
+        try:
+            # WICHTIG: Immer einen eindeutigen User-Agent angeben
+            geolocator = Nominatim(user_agent="mycraft_app_backend_search")
+
+            # Wir holen die 'addressdetails=True', um Straße, PLZ, Stadt einzeln zu bekommen
+            locations = geolocator.geocode(
+                query,
+                exactly_one=False,
+                limit=5,
+                addressdetails=True,
+                language='de'  # Ergebnisse auf Deutsch bevorzugen
+            )
+
+            results = []
+            if locations:
+                for loc in locations:
+                    # Nominatim liefert unterschiedliche Keys für Städte (city, town, village...)
+                    addr = loc.raw.get('address', {})
+                    city = addr.get('city') or addr.get('town') or addr.get('village') or addr.get('municipality') or ''
+
+                    results.append({
+                        'display_name': loc.address,  # Der volle lesbare String
+                        'road': addr.get('road', ''),
+                        'house_number': addr.get('house_number', ''),
+                        'zip_code': addr.get('postcode', ''),
+                        'city': city,
+                        'lat': loc.latitude,
+                        'lng': loc.longitude
+                    })
+
+            return Response(results)
+
+        except Exception as e:
+            print(f"Geocoding Error: {e}")
+            return Response({'error': str(e)}, status=500)
+
     def get_queryset(self):
-        # We start with the optimized queryset defined above
         queryset = super().get_queryset()
-        
-        # --- GEO SEARCH LOGIC ---
+
+        # --- PARAMETER HOLEN ---
+        search_term = self.request.query_params.get('search')
+        trade_filter = self.request.query_params.get('trade')
+        location_query = self.request.query_params.get('city')  # Frontend sendet 'city' für das Feld "Wo?"
+
+        # --- 1. GEWERK FILTER (Dropdown) ---
+        if trade_filter:
+            queryset = queryset.filter(trade=trade_filter)
+
+        # --- 2. INTELLIGENTE TEXTSUCHE (Was?) ---
+        if search_term:
+            # Suche in Titel und Beschreibung
+            search_query = Q(title__icontains=search_term) | Q(description__icontains=search_term)
+
+            # Prüfe auch, ob der Suchbegriff einem Gewerk-Namen entspricht (z.B. "Maler" -> PAINTER)
+            matching_trades = []
+            for code, label in Job.Trade.choices:
+                if str(search_term).lower() in str(label).lower():
+                    matching_trades.append(code)
+
+            if matching_trades:
+                search_query = search_query | Q(trade__in=matching_trades)
+
+            queryset = queryset.filter(search_query)
+
+        # --- 3. STANDORT FILTER TEXT (Wo?) ---
+        # Sucht nach Stadtname ODER Postleitzahl
+        if location_query:
+            queryset = queryset.filter(
+                Q(city__icontains=location_query) |
+                Q(zip_code__startswith=location_query)
+            )
+
+        # --- 4. GEO-SEARCH (In meiner Nähe Button) ---
         lat = self.request.query_params.get('lat')
         lng = self.request.query_params.get('lng')
         radius = self.request.query_params.get('radius')
@@ -37,7 +113,7 @@ class JobViewSet(viewsets.ModelViewSet):
                 ).order_by('distance')
             except (ValueError, TypeError):
                 pass
-        
+
         return queryset
 
     def perform_create(self, serializer):
@@ -45,20 +121,18 @@ class JobViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'], url_path='my-jobs')
     def my_jobs(self, request):
-        # Also optimize this custom action
         services = self.get_queryset().filter(contractor=request.user)
         serializer = self.get_serializer(services, many=True)
         return Response(serializer.data)
 
+
+# ... (BookingViewSet bleibt unverändert)
 class BookingViewSet(viewsets.ModelViewSet):
-    """
-    Manages individual Bookings of a Service.
-    """
+    # ... (Code wie zuvor)
     serializer_class = BookingSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        # Optimization: Fetch related service and users to avoid N+1 in lists
         return Booking.objects.filter(
             Q(customer=self.request.user) | Q(contractor=self.request.user)
         ).select_related('service', 'customer', 'contractor')
