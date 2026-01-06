@@ -62,6 +62,29 @@ class JobViewSet(viewsets.ModelViewSet):
             print(f"Geocoding Error: {e}")
             return Response({'error': str(e)}, status=500)
 
+    @action(detail=True, methods=['get'])
+    def availability(self, request, pk=None):
+        """
+        Gibt eine Liste aller belegten Tage (Datum) für den Handwerker dieses Jobs zurück.
+        Startet ab 'heute'.
+        """
+        job = self.get_object()
+        contractor = job.contractor
+
+        # Nur zukünftige oder heutige Termine sind relevant
+        today = timezone.now().date()
+
+        # Wir suchen alle Buchungen dieses Handwerkers, die NICHT storniert oder erledigt sind
+        busy_dates = Booking.objects.filter(
+            contractor=contractor,
+            scheduled_date__gte=today,
+            status__in=[Booking.Status.PENDING, Booking.Status.CONFIRMED]
+        ).values_list('scheduled_date', flat=True)
+
+        # Wir entfernen Duplikate (set) und sortieren die Liste
+        # DRF wandelt die Datum-Objekte automatisch in Strings "YYYY-MM-DD" um
+        return Response(sorted(list(set(busy_dates))))
+
     def get_queryset(self):
         queryset = super().get_queryset()
 
@@ -121,7 +144,11 @@ class JobViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'], url_path='my-jobs')
     def my_jobs(self, request):
-        services = self.get_queryset().filter(contractor=request.user)
+        # WICHTIG: Wir nutzen Job.objects.filter(...) statt self.get_queryset()
+        # Damit umgehen wir den Filter, der nur 'OPEN' Jobs anzeigt.
+        # So siehst du auch pausierte oder versteckte Jobs.
+        services = Job.objects.filter(contractor=request.user).order_by('-created_at')
+
         serializer = self.get_serializer(services, many=True)
         return Response(serializer.data)
 
@@ -136,6 +163,10 @@ class BookingViewSet(viewsets.ModelViewSet):
         return Booking.objects.filter(
             Q(customer=self.request.user) | Q(contractor=self.request.user)
         ).select_related('service', 'customer', 'contractor')
+
+    def perform_create(self, serializer):
+        # Setzt den eingeloggten User als Kunden
+        serializer.save(customer=self.request.user)
 
     @action(detail=False, methods=['get'])
     def my_bookings(self, request):

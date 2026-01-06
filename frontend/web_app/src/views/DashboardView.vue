@@ -1,84 +1,187 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import api from '@/api';
 import JobCard from '@/components/JobCard.vue';
-import JobCardSkeleton from '@/components/JobCardSkeleton.vue';
-import { useToastStore } from '@/stores/toast'; // Falls du Toast nutzt
+import BookingCard from '@/components/BookingCard.vue';
+import { useAuthStore } from '@/stores/auth';
+import { useToastStore } from '@/stores/toast';
 
-const myServices = ref([]); // Hier kommen die Jobs rein
+const authStore = useAuthStore();
+const toast = useToastStore();
+const user = computed(() => authStore.currentUser);
+
+// Daten
+const myServices = ref([]);
+const myOrders = ref([]);
 const loading = ref(true);
-const activeTab = ref('my-services'); // Oder wie auch immer deine Tabs heißen
 
-const fetchMyServices = async () => {
+// TABS: Wir nutzen einheitlich 'services' und 'orders'
+const activeTab = ref('services');
+
+const fetchData = async () => {
   loading.value = true;
   try {
-    const response = await api.getMyServices();
+    const [servicesRes, ordersRes] = await Promise.all([
+      api.getMyServices(),
+      api.getMyOrders()
+    ]);
 
-    // WICHTIG: api.js transformiert GeoJSON und packt die Liste in 'results'
-    // Wenn hier nur 'response.data' steht, ist das der Fehler!
-    myServices.value = response.data.results || [];
+    // Debugging (optional)
+    console.log("Services:", servicesRes.data);
 
-    console.log("Geladene Services:", myServices.value); // Debugging
-  } catch (error) {
-    console.error("Fehler beim Laden der Services:", error);
+    // Daten sicher zuweisen
+    if (Array.isArray(servicesRes.data)) {
+        myServices.value = [...servicesRes.data];
+    } else if (servicesRes.data && Array.isArray(servicesRes.data.results)) {
+        myServices.value = [...servicesRes.data.results];
+    } else {
+        myServices.value = [];
+    }
+
+    // Orders zuweisen
+    if (Array.isArray(ordersRes.data)) {
+        myOrders.value = [...ordersRes.data];
+    } else if (ordersRes.data && Array.isArray(ordersRes.data.results)) {
+        myOrders.value = [...ordersRes.data.results];
+    } else {
+        myOrders.value = [];
+    }
+
+  } catch (err) {
+    console.error(err);
+    toast.addToast("Daten konnten nicht geladen werden", "error");
   } finally {
     loading.value = false;
   }
 };
 
-onMounted(() => {
-  fetchMyServices();
+onMounted(fetchData);
+
+// Actions
+const handleMarkCompleted = async (bookingId) => {
+  try {
+    await api.markBookingAsCompleted(bookingId);
+    toast.addToast("Auftrag erledigt!", "success");
+    fetchData();
+  } catch (err) {
+    toast.addToast("Fehler beim Speichern", "error");
+  }
+};
+
+const handleCancelOrder = async (bookingId) => {
+  if (!confirm("Wirklich stornieren?")) return;
+  try {
+    await api.cancelBooking(bookingId);
+    toast.addToast("Storniert", "info");
+    fetchData();
+  } catch (err) {
+    toast.addToast("Fehler beim Stornieren", "error");
+  }
+};
+
+const pendingOrdersCount = computed(() => {
+  return myOrders.value.filter(o => o.status === 'PENDING' || o.status === 'CONFIRMED').length;
 });
 </script>
 
 <template>
-  <div class="container-fluid dashboard-container">
-    <!-- ... (header and tabs remain the same) ... -->
-    <main class="tab-content">
-      <div v-if="loading" class="dashboard-grid">
-        <JobCardSkeleton v-for="n in 4" :key="n" />
+  <div class="container page-wrapper">
+    <header class="dashboard-header">
+      <div class="header-text">
+        <h1>Handwerker Dashboard</h1>
+        <p class="subtitle">Willkommen, {{ user?.username }}!</p>
       </div>
-      <template v-else>
-        <div v-if="activeTab === 'my-services'">
-          <div v-if="myServices.length === 0" class="empty-state">
-            <!-- ... -->
-          </div>
-          <div v-else class="dashboard-grid">
-            <!-- FIX: Pass 'service' prop instead of 'job' -->
-            <JobCard
-              v-for="service in myServices"
-              :key="service.id"
-              :service="service"
-              :show-controls="true"
-            />
-          </div>
+
+      <router-link :to="{ name: 'CreateService' }" class="base-button primary-action create-btn">
+        + Neues Inserat
+      </router-link>
+    </header>
+
+    <div class="tabs">
+      <button
+        class="tab-btn"
+        :class="{ active: activeTab === 'services' }"
+        @click="activeTab = 'services'"
+      >
+        Meine Inserate ({{ myServices.length }})
+      </button>
+
+      <button
+        class="tab-btn"
+        :class="{ active: activeTab === 'orders' }"
+        @click="activeTab = 'orders'"
+      >
+        Auftragseingang
+        <span v-if="pendingOrdersCount > 0" class="badge">{{ pendingOrdersCount }}</span>
+      </button>
+    </div>
+
+    <div v-if="loading" class="loading-state">Lade Daten...</div>
+
+    <div v-else class="tab-content">
+
+      <div v-if="activeTab === 'services'">
+        <div v-if="myServices.length === 0" class="empty-state">
+          <p>Du bietest noch keine Dienstleistungen an.</p>
         </div>
-        <!-- ... (other tabs remain the same) ... -->
-      </template>
-    </main>
-    <!-- ... (modal remains the same) ... -->
+
+        <div v-else class="dashboard-grid">
+          <JobCard
+            v-for="service in myServices"
+            :key="service.id"
+            :service="service"
+            :show-controls="true"
+          />
+        </div>
+      </div>
+
+      <div v-if="activeTab === 'orders'">
+        <div v-if="myOrders.length === 0" class="empty-state">
+          <p>Noch keine Aufträge erhalten.</p>
+        </div>
+        <div v-else class="dashboard-grid">
+          <BookingCard
+            v-for="order in myOrders"
+            :key="order.id"
+            :booking="order"
+            :show-controls="true"
+            :is-craftsman-view="true"
+            @mark-completed="handleMarkCompleted"
+            @cancel="handleCancelOrder"
+          />
+        </div>
+      </div>
+
+    </div>
   </div>
 </template>
 
 <style scoped>
+.page-wrapper { padding-top: var(--spacing-lg); padding-bottom: var(--spacing-xxl); }
+.dashboard-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: var(--spacing-xl); flex-wrap: wrap; gap: 20px; }
+.header-text h1 { margin-bottom: 4px; font-size: 2rem; }
+.subtitle { color: var(--color-text-light); }
+.create-btn { padding: 10px 20px; font-weight: 600; text-decoration: none; display: inline-block; }
+
+/* Tabs Design */
+.tabs { display: flex; gap: 20px; border-bottom: 2px solid #eee; margin-bottom: 24px; }
+.tab-btn { background: none; border: none; padding: 12px 4px; font-size: 1rem; color: var(--color-text-light); cursor: pointer; position: relative; font-weight: 600; }
+.tab-btn.active { color: var(--color-primary); }
+.tab-btn.active::after { content: ''; position: absolute; bottom: -2px; left: 0; width: 100%; height: 2px; background-color: var(--color-primary); }
+.badge { background-color: var(--color-error); color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; margin-left: 8px; vertical-align: middle; }
+
+/* Grid Layout (angepasst an deinen JobCard Style) */
 .dashboard-grid {
   display: grid;
-  /* Das ist der Zaubertrick für Responsive Design:
-     Erstelle so viele Spalten wie möglich (auto-fill),
-     aber jede Spalte muss mindestens 280px breit sein (minmax).
-     Den Rest (1fr) verteilt er gleichmäßig.
-  */
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 24px; /* Abstand zwischen den Karten */
-  margin-top: 20px;
+  gap: 24px;
   width: 100%;
 }
 
-/* Optional: Damit es auf sehr kleinen Handys nicht am Rand klebt */
+.empty-state { text-align: center; padding: 40px; background: #f9f9f9; border-radius: 12px; color: var(--color-text-light); }
+.loading-state { text-align: center; padding: 40px; color: var(--color-text-light); }
+
 @media (max-width: 600px) {
-  .dashboard-grid {
-    grid-template-columns: 1fr; /* Auf Handys volle Breite, aber mit Abstand */
-    gap: 16px;
-  }
+  .dashboard-grid { grid-template-columns: 1fr; }
 }
 </style>

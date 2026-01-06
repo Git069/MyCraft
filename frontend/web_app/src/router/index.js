@@ -12,6 +12,7 @@ import ProfileView from '@/views/ProfileView.vue'
 import DashboardView from '@/views/DashboardView.vue'
 import EditServiceView from '@/views/EditServiceView.vue'
 import CraftsmanProfileView from '@/views/CraftsmanProfileView.vue'
+import MyBookingsView from '@/views/MyBookingsView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -20,6 +21,8 @@ const router = createRouter({
     { path: '/login', name: 'Login', component: LoginView },
     { path: '/register', name: 'Register', component: RegisterView },
     { path: '/marketplace', name: 'JobMarketplace', component: JobMarketplaceView },
+    { path: '/my-bookings', name: 'MyBookings', component: MyBookingsView, meta: { requiresAuth: true }
+    },
     
     // Corrected Service Routes
     { path: '/services/:id', name: 'ServiceDetail', component: JobDetailView },
@@ -29,6 +32,7 @@ const router = createRouter({
       component: EditServiceView, 
       meta: { requiresAuth: true, requiresCraftsman: true } 
     },
+
     { 
       path: '/create-service', // Renamed from create-job
       name: 'CreateService', 

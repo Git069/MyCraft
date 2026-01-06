@@ -86,17 +86,33 @@ onUnmounted(() => {
             <UserAvatar :src="fullImageUrl" :name="user?.username || ''" :size="30" />
           </button>
 
-          <div v-if="isMenuOpen" class="dropdown-menu">
+         <div v-if="isMenuOpen" class="dropdown-menu">
             <template v-if="isLoggedIn">
-              <RouterLink :to="{ name: 'Dashboard' }" class="menu-item bold" @click="isMenuOpen = false">
+
+              <RouterLink
+                v-if="isCraftsman"
+                :to="{ name: 'Dashboard' }"
+                class="menu-item bold"
+                @click="isMenuOpen = false"
+              >
                 Dashboard
               </RouterLink>
+
+              <RouterLink
+                :to="{ name: 'MyBookings' }"
+                class="menu-item"
+                @click="isMenuOpen = false"
+              >
+                Meine Buchungen
+              </RouterLink>
+
               <RouterLink :to="{ name: 'Inbox' }" class="menu-item" @click="isMenuOpen = false">
                 Nachrichten
               </RouterLink>
               <RouterLink :to="{ name: 'Profile' }" class="menu-item" @click="isMenuOpen = false">
                 Profil
               </RouterLink>
+
               <div class="divider"></div>
               <button class="menu-item logout-item" @click="handleLogout">Logout</button>
             </template>

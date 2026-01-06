@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from django.contrib.gis.geos import Point
+from django.utils import timezone  # <--- WICHTIG: Dieser Import hat gefehlt!
 from .models import Job, Booking
 
 
@@ -35,11 +36,65 @@ class JobSerializer(serializers.ModelSerializer):
 
         return super().update(instance, validated_data)
 
+
 class BookingSerializer(serializers.ModelSerializer):
+    # Lesender Zugriff: Wir zeigen alle Details des Jobs
     service = JobSerializer(read_only=True)
+
+    # Schreibender Zugriff: Wir erwarten nur die ID des Jobs
+    service_id = serializers.PrimaryKeyRelatedField(
+        queryset=Job.objects.all(), source='service', write_only=True
+    )
+
     customer_name = serializers.CharField(source='customer.username', read_only=True)
 
     class Meta:
         model = Booking
-        fields = ['id', 'service', 'customer', 'customer_name', 'contractor', 'status', 'price', 'scheduled_date', 'created_at']
-        read_only_fields = ['customer', 'contractor']
+        fields = ['id', 'service', 'service_id', 'customer', 'customer_name', 'contractor', 'status', 'price', 'scheduled_date', 'created_at']
+        read_only_fields = ['customer', 'contractor', 'price', 'status']
+
+    def validate(self, data):
+        """
+        Prüft Geschäftsregeln vor der Buchung.
+        """
+        user = self.context['request'].user
+        # Wir holen das Service-Objekt aus den validierten Daten (wurde durch service_id aufgelöst)
+        service = data.get('service')
+        scheduled_date = data.get('scheduled_date')
+
+        # 1. Eigene Services darf man nicht buchen
+        if service and service.contractor == user:
+            raise serializers.ValidationError("Du kannst deine eigenen Dienstleistungen nicht buchen.")
+
+        # 2. Datum muss in der Zukunft liegen
+        if scheduled_date and scheduled_date < timezone.now().date():
+            raise serializers.ValidationError({"scheduled_date": "Das Datum darf nicht in der Vergangenheit liegen."})
+
+        # 3. Verfügbarkeits-Check
+        if service and scheduled_date:
+            is_busy = Booking.objects.filter(
+                contractor=service.contractor,
+                scheduled_date=scheduled_date,
+                status__in=[Booking.Status.PENDING, Booking.Status.CONFIRMED]
+            ).exists()
+
+            if is_busy:
+                raise serializers.ValidationError(
+                    {"scheduled_date": "Der Handwerker ist an diesem Datum bereits ausgebucht."}
+                )
+
+        return data
+
+    def create(self, validated_data):
+        """
+        Füllt automatische Felder beim Erstellen.
+        """
+        service = validated_data['service']
+
+        # Automatisch den Handwerker aus dem Service übernehmen
+        validated_data['contractor'] = service.contractor
+
+        # Preis als Snapshot speichern
+        validated_data['price'] = service.price if service.price else 0
+
+        return super().create(validated_data)

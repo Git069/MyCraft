@@ -104,6 +104,16 @@ export default {
     return response;
   },
 
+// Holt die Liste der belegten Tage (Array von Strings "YYYY-MM-DD")
+  getServiceAvailability(serviceId) {
+    return apiClient.get(`/services/${serviceId}/availability/`);
+  },
+
+  // Erstellt eine verbindliche Buchung
+  createBooking(bookingData) {
+    return apiClient.post('/bookings/', bookingData);
+  },
+
   updateService(serviceId, serviceData) { return apiClient.patch(`/services/${serviceId}/`, serviceData); },
   deleteService(serviceId) { return apiClient.delete(`/services/${serviceId}/`); },
   
