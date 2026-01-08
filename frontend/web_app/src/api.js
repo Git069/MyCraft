@@ -116,11 +116,15 @@ export default {
 
   updateService(serviceId, serviceData) { return apiClient.patch(`/services/${serviceId}/`, serviceData); },
   deleteService(serviceId) { return apiClient.delete(`/services/${serviceId}/`); },
+ getPriceAdvice(serviceId) {return apiClient.get(`/services/${serviceId}/price-advice/`);
+  },
   
   async getMyServices() { 
     const response = await apiClient.get('/services/my-jobs/');
     return transformGeoJSON(response);
   },
+
+
 
 
   // ... (Aliases and other functions remain same)

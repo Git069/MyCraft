@@ -1,5 +1,5 @@
 from rest_framework import viewsets, permissions
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from django.db.models import Q
 from django.contrib.gis.geos import Point
@@ -8,7 +8,9 @@ from django.contrib.gis.db.models.functions import Distance
 from .models import Job, Booking
 from .serializers import JobSerializer, BookingSerializer
 from .permissions import IsOwnerOrReadOnly
-from geopy.geocoders import Nominatim # Stelle sicher, dass das importiert ist
+from geopy.geocoders import Nominatim
+from config.ai_utils import get_ai_response
+
 
 
 class JobViewSet(viewsets.ModelViewSet):
@@ -152,6 +154,29 @@ class JobViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(services, many=True)
         return Response(serializer.data)
 
+    @action(detail=True, methods=['get'], url_path='price-advice')
+    def price_advice(self, request, pk=None):
+        """
+        Fragt die KI nach einer Preiseinschätzung für diesen Job.
+        """
+        job = self.get_object()
+
+        # Wir bauen einen Prompt mit den Daten des Jobs
+        prompt = (
+            f"Du bist ein Experte für Handwerkerpreise in Deutschland. "
+            f"Ein Kunde fragt nach einer Preiseinschätzung. "
+            f"Details: "
+            f"Gewerk: {job.get_trade_display()}. "
+            f"Ort: {job.zip_code} {job.city}. "
+            f"Beschreibung: {job.description}. "
+            f"Bitte gib eine realistische Preisspanne an und erkläre kurz, wovon der Preis abhängt. "
+            f"Antworte direkt an den Kunden (per 'Du'). Halte es kurz (max 3 Sätze)."
+        )
+
+        # KI fragen
+        ai_reply = get_ai_response(prompt)
+        return Response({'advice': ai_reply})
+
 
 # ... (BookingViewSet bleibt unverändert)
 class BookingViewSet(viewsets.ModelViewSet):
@@ -165,8 +190,10 @@ class BookingViewSet(viewsets.ModelViewSet):
         ).select_related('service', 'customer', 'contractor')
 
     def perform_create(self, serializer):
-        # Setzt den eingeloggten User als Kunden
-        serializer.save(customer=self.request.user)
+        serializer.save(
+            customer=self.request.user,
+            status=Booking.Status.CONFIRMED
+        )
 
     @action(detail=False, methods=['get'])
     def my_bookings(self, request):

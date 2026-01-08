@@ -12,95 +12,24 @@ const authStore = useAuthStore();
 const job = ref(null);
 const loading = ref(true);
 const error = ref(null);
-
-// Buchungs-State
 const isStartingConversation = ref(false);
-const isBooking = ref(false);
-const bookingDate = ref('');
-const bookingError = ref(null);
-const busyDates = ref([]); // Liste der blockierten Tage vom Backend
+
+// KI State
+const aiAdvice = ref(null);
+const loadingAi = ref(false);
 
 const jobId = route.params.id;
 
 const isLoggedIn = computed(() => authStore.isLoggedIn);
 const currentUser = computed(() => authStore.currentUser);
 
-// Darf der User buchen/kontaktieren? (Nicht der eigene Job)
-const canInteract = computed(() => {
+const canContact = computed(() => {
   if (!isLoggedIn.value || !job.value) return false;
   return job.value.contractor !== currentUser.value?.id;
 });
 
-// Datumsgrenzen für das Input-Feld
-const minDate = computed(() => {
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  return tomorrow.toISOString().split('T')[0];
-});
-
-// -- LOGIK: Verfügbarkeit laden --
-const fetchAvailability = async () => {
-  try {
-    const response = await api.getServiceAvailability(jobId);
-    busyDates.value = response.data; // Erwartet Array ["2024-10-25", ...]
-  } catch (err) {
-    console.error("Konnte Verfügbarkeit nicht laden", err);
-  }
-};
-
-const fetchJobDetails = async () => {
-  loading.value = true;
-  error.value = null;
-  try {
-    const response = await api.getJobDetails(jobId);
-    job.value = response.data;
-    // Wenn Job geladen, hole Verfügbarkeit
-    if (job.value) {
-      await fetchAvailability();
-    }
-  } catch (err) {
-    error.value = "Fehler: Der Auftrag konnte nicht geladen werden.";
-  } finally {
-    loading.value = false;
-  }
-};
-
-onMounted(fetchJobDetails);
-
-// -- LOGIK: Buchung durchführen --
-const handleBooking = async () => {
-  if (!bookingDate.value) return;
-
-  // Client-Side Check: Ist das Datum in der busy-list?
-  if (busyDates.value.includes(bookingDate.value)) {
-    bookingError.value = "Dieser Termin ist leider schon vergeben.";
-    return;
-  }
-
-  isBooking.value = true;
-  bookingError.value = null;
-
-  try {
-    await api.createBooking({
-      service_id: job.value.id,
-      scheduled_date: bookingDate.value
-    });
-
-    // Erfolg! Weiterleitung zur Startseite statt zum Chat
-    router.push({ name: 'Home' });
-
-  } catch (err) {
-    // Fehler vom Backend anzeigen (z.B. "Bereits ausgebucht")
-    bookingError.value = err.response?.data?.scheduled_date?.[0] ||
-                         err.response?.data?.non_field_errors?.[0] ||
-                         "Buchung fehlgeschlagen.";
-  } finally {
-    isBooking.value = false;
-  }
-};
-
 const handleContact = async () => {
-  if (!canInteract.value) return;
+  if (!canContact.value) return;
   isStartingConversation.value = true;
   error.value = null;
   try {
@@ -114,6 +43,38 @@ const handleContact = async () => {
     isStartingConversation.value = false;
   }
 };
+
+// -- NEU: KI Preis-Check Funktion --
+const getPriceAdvice = async () => {
+  loadingAi.value = true;
+  aiAdvice.value = null;
+  try {
+    // Ruft die neue Funktion in api.js auf
+    const response = await api.getPriceAdvice(jobId);
+    aiAdvice.value = response.data.advice;
+  } catch (err) {
+    console.error(err);
+    aiAdvice.value = "Entschuldigung, die KI ist gerade nicht erreichbar.";
+  } finally {
+    loadingAi.value = false;
+  }
+};
+// ----------------------------------
+
+const fetchJobDetails = async () => {
+  loading.value = true;
+  error.value = null;
+  try {
+    const response = await api.getJobDetails(jobId);
+    job.value = response.data;
+  } catch (err) {
+    error.value = "Fehler: Der Auftrag konnte nicht geladen werden.";
+  } finally {
+    loading.value = false;
+  }
+};
+
+onMounted(fetchJobDetails);
 
 const formatPrice = (price) => {
   if (!price) return 'Preis auf Anfrage';
@@ -177,7 +138,34 @@ const heroImage = computed(() => {
             <h2>Beschreibung</h2>
             <p>{{ job.description }}</p>
           </section>
-        </div>
+
+          <div class="divider"></div>
+
+          <section class="ai-section">
+            <div class="ai-header">
+              <h3>🤖 KI-Preischeck</h3>
+              <span class="beta-badge">Beta</span>
+            </div>
+            <p class="ai-intro">Unsicher beim Preis? Lass dir von unserer KI eine unverbindliche Einschätzung geben.</p>
+
+            <div v-if="!aiAdvice" class="ai-action">
+              <button
+                @click="getPriceAdvice"
+                class="base-button ai-btn"
+                :disabled="loadingAi"
+              >
+                {{ loadingAi ? 'KI analysiert...' : 'Preis einschätzen lassen' }}
+              </button>
+            </div>
+
+            <div v-else class="ai-result">
+              <div class="result-bubble">
+                {{ aiAdvice }}
+              </div>
+              <button @click="getPriceAdvice" class="retry-link">Neu berechnen</button>
+            </div>
+          </section>
+          </div>
 
         <div class="right-column">
           <aside class="action-card">
@@ -187,56 +175,18 @@ const heroImage = computed(() => {
             </div>
 
             <div class="action-body">
-              <div v-if="!isLoggedIn" class="login-prompt">
-                <router-link :to="{ name: 'Login' }">Melde dich an</router-link>, um zu buchen.
-              </div>
-
-              <div v-else-if="canInteract" class="booking-form">
-
-                <div class="date-picker-group">
-                  <label for="booking-date">Wunschtermin wählen:</label>
-                  <input
-                    type="date"
-                    id="booking-date"
-                    v-model="bookingDate"
-                    :min="minDate"
-                    class="date-input"
-                  />
-                  <div v-if="busyDates.includes(bookingDate)" class="date-warning">
-                    ⚠️ Dieser Termin ist bereits belegt.
-                  </div>
-                </div>
-
-                <button
-                  @click="handleBooking"
-                  class="base-button primary-action book-btn"
-                  :disabled="isBooking || !bookingDate || busyDates.includes(bookingDate)"
-                >
-                  {{ isBooking ? 'Buche...' : 'Verbindlich buchen' }}
-                </button>
-
-                <div v-if="bookingError" class="error-message booking-error">
-                  {{ bookingError }}
-                </div>
-
-                <div class="divider-small">oder</div>
-
-                <button
-                  @click="handleContact"
-                  class="base-button secondary-action"
-                  :disabled="isStartingConversation"
-                >
-                  {{ isStartingConversation ? '...' : 'Frage stellen' }}
-                </button>
-              </div>
-
-              <div v-else class="owner-info">
-                Das ist dein eigener Auftrag.
+              <button v-if="canContact" @click="handleContact" class="base-button primary-action" :disabled="isStartingConversation">
+                {{ isStartingConversation ? 'Wird gesendet...' : 'Handwerker kontaktieren' }}
+              </button>
+              <div v-else-if="!isLoggedIn" class="login-prompt">
+                <router-link :to="{ name: 'Login' }">Melde dich an</router-link>, um zu kontaktieren.
               </div>
             </div>
 
+            <div v-if="error && isStartingConversation" class="error-message booking-error">{{ error }}</div>
+
             <footer class="action-footer">
-              <p v-if="canInteract">Mit der Buchung akzeptierst du die AGB.</p>
+              <p>Du gehst noch keine verbindliche Buchung ein.</p>
             </footer>
           </aside>
         </div>
@@ -246,17 +196,12 @@ const heroImage = computed(() => {
 </template>
 
 <style scoped>
-/* Layout */
+/* Bestehende Styles */
 .detail-page-wrapper { padding: var(--spacing-lg) 0; }
 .image-hero-section { width: 100%; max-height: 400px; overflow: hidden; border-radius: 16px; margin-bottom: var(--spacing-xl); }
 .hero-image { width: 100%; height: 100%; object-fit: cover; }
 .main-content-grid { display: grid; grid-template-columns: 1fr; gap: var(--spacing-xxl); }
-
-@media (min-width: 992px) {
-  .main-content-grid { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); }
-}
-
-/* Header & Info */
+@media (min-width: 992px) { .main-content-grid { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); } }
 .job-header h1 { font-size: 2rem; font-weight: 800; margin-top: 0; margin-bottom: var(--spacing-xs); text-transform: capitalize; }
 .meta-info { font-size: 1rem; color: var(--color-text-light); }
 .divider { border-bottom: 1px solid var(--color-border); margin: 32px 0; }
@@ -269,43 +214,63 @@ const heroImage = computed(() => {
 .description-section h2 { font-size: 1.5rem; margin-top: 0; margin-bottom: var(--spacing-md); }
 .description-section p { line-height: 1.7; white-space: pre-wrap; }
 
-/* Rechte Spalte (Sticky Card) */
+/* Rechte Spalte */
 .right-column { position: relative; }
 .action-card { background-color: white; border: 1px solid var(--color-border); border-radius: 12px; padding: 24px; box-shadow: 0 6px 16px rgba(0,0,0,0.12); position: sticky; top: 120px; }
 .price-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 24px; }
 .price { font-size: 1.5rem; font-weight: 800; }
 .price-label { color: var(--color-text-light); font-size: 1rem; }
+.primary-action { width: 100%; font-size: 1rem; padding: 14px; font-weight: 600; cursor: pointer; border: none; background-color: var(--color-primary); color: white; border-radius: 8px; }
+.primary-action:hover { background-color: var(--color-primary-dark, #0056b3); }
+.primary-action:disabled { background-color: #ccc; cursor: not-allowed; }
+.action-footer { text-align: center; font-size: 0.85rem; color: var(--color-text-light); margin-top: 16px; }
 
-/* Buchungsformular */
-.booking-form { display: flex; flex-direction: column; gap: 12px; }
-.date-picker-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
-.date-picker-group label { font-size: 0.9rem; font-weight: 600; color: var(--color-text); }
-.date-input { padding: 12px; border: 1px solid var(--color-border); border-radius: 8px; font-family: inherit; font-size: 1rem; }
-.date-input:focus { border-color: var(--color-primary); outline: none; }
-.date-warning { font-size: 0.85rem; color: var(--color-error); margin-top: 4px; }
+/* --- NEU: KI Styles --- */
+.ai-section {
+  background: linear-gradient(to right, #f8f9fa, #e3f2fd);
+  padding: 24px;
+  border-radius: 12px;
+  border: 1px solid #d1e7dd;
+  margin-top: 20px;
+}
+.ai-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.ai-header h3 { margin: 0; font-size: 1.2rem; font-weight: 700; color: #333; }
+.beta-badge { background: #666; color: white; font-size: 0.7rem; padding: 2px 8px; border-radius: 12px; font-weight: 600; text-transform: uppercase; }
+.ai-intro { font-size: 0.95rem; color: #555; margin-bottom: 20px; line-height: 1.5; }
 
-/* Buttons */
-.primary-action { width: 100%; font-size: 1rem; padding: 14px; font-weight: 600; cursor: pointer; }
-.book-btn { background-color: var(--color-primary); color: white; border: none; border-radius: 8px; transition: background-color 0.2s; }
-.book-btn:hover:not(:disabled) { background-color: var(--color-primary-dark, #0056b3); }
-.book-btn:disabled { background-color: #ccc; cursor: not-allowed; }
-
-/* HIER WAR DER FEHLER: */
-.secondary-action {
-  width: 100%;
-  background-color: transparent;
-  color: var(--color-text); /* <--- Das fehlte! */
-  border: 1px solid var(--color-border);
-  padding: 10px;
+.ai-btn {
+  background-color: white;
+  border: 1px solid #0d6efd;
+  color: #0d6efd;
+  padding: 10px 20px;
   border-radius: 8px;
-  cursor: pointer;
   font-weight: 600;
+  cursor: pointer;
   transition: all 0.2s;
 }
-.secondary-action:hover { border-color: var(--color-text); background-color: #f9f9f9; }
+.ai-btn:hover:not(:disabled) { background-color: #0d6efd; color: white; }
+.ai-btn:disabled { opacity: 0.6; cursor: wait; }
 
-.divider-small { text-align: center; font-size: 0.85rem; color: var(--color-text-light); margin: 4px 0; }
-.error-message { color: var(--color-error); font-size: 0.9rem; margin-top: 8px; text-align: center; }
-.action-footer { text-align: center; font-size: 0.85rem; color: var(--color-text-light); margin-top: 16px; }
-.owner-info { text-align: center; color: var(--color-text-light); font-style: italic; padding: 10px; background-color: #f5f5f5; border-radius: 8px; }
+.result-bubble {
+  background: white;
+  padding: 16px;
+  border-radius: 8px;
+  border-left: 4px solid #0d6efd;
+  font-style: italic;
+  color: #333;
+  line-height: 1.6;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  white-space: pre-wrap; /* Wichtig für Zeilenumbrüche der KI */
+}
+.retry-link {
+  background: none;
+  border: none;
+  color: #666;
+  font-size: 0.85rem;
+  text-decoration: underline;
+  cursor: pointer;
+  margin-top: 12px;
+  display: block;
+}
+.retry-link:hover { color: #333; }
 </style>

@@ -5,6 +5,7 @@ from rest_framework.exceptions import PermissionDenied
 from .models import Conversation, Message, Offer
 from jobs.models import Job, Booking
 from .serializers import ConversationListSerializer, ConversationDetailSerializer, MessageSerializer, OfferSerializer
+from config.ai_utils import get_ai_response
 
 class ConversationViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
@@ -47,6 +48,26 @@ class ConversationViewSet(viewsets.ModelViewSet):
         message = Message.objects.create(conversation=conversation, sender=request.user, content=content)
         serializer = MessageSerializer(message)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=['post'], url_path='suggest-reply')
+    def suggest_reply(self, request):
+        """
+        Erwartet im Body: { 'last_message': '...' }
+        """
+        last_message = request.data.get('last_message', '')
+
+        if not last_message:
+            return Response({'suggestion': 'Keine Nachricht zum Antworten gefunden.'})
+
+        prompt = (
+            f"Du bist ein freundlicher, professioneller Handwerker. "
+            f"Ein Kunde hat dir geschrieben: '{last_message}'. "
+            f"Verfasse eine kurze, höfliche Antwort, die Interesse zeigt oder auf die Frage eingeht. "
+            f"Schreibe nur den Antworttext ohne Anführungszeichen."
+        )
+
+        ai_reply = get_ai_response(prompt)
+        return Response({'suggestion': ai_reply})
 
 class OfferViewSet(viewsets.ViewSet):
     permission_classes = [permissions.IsAuthenticated]
