@@ -8,6 +8,7 @@ class JobSerializer(serializers.ModelSerializer):
     # Wir fügen zwei "Schreib-Felder" hinzu, die nicht in der DB, aber im Input existieren
     lat = serializers.FloatField(write_only=True, required=False)
     lng = serializers.FloatField(write_only=True, required=False)
+    contractor_username = serializers.CharField(source='contractor.username', read_only=True)
 
     class Meta:
         model = Job

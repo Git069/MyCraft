@@ -108,6 +108,11 @@ const displayTitle = computed(() => {
 
     <div class="info-container" @click="goToDetail">
       <span class="title">{{ displayTitle }}</span>
+
+      <span class="contractor-info">
+        Auftrag von {{ service.contractor_username || 'Unbekannt' }}
+      </span>
+
       <span class="price">{{ formattedPrice }}</span>
     </div>
 
@@ -116,7 +121,7 @@ const displayTitle = computed(() => {
         <button class="action-btn edit" @click="goToEdit">Bearbeiten</button>
         <button class="action-btn cancel" @click="$emit('cancel', service.id)">Stornieren</button>
       </div>
-      </div>
+    </div>
   </div>
 </template>
 
