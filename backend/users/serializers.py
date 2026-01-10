@@ -62,3 +62,10 @@ class PublicUserSerializer(UserSerializer):
     # as it contains all necessary public fields.
     class Meta(UserSerializer.Meta):
         pass
+
+class UserProfileUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Profile
+        fields = ('bio', 'city', 'company_name', 'street_address', 'zip_code')
+        # Alle Felder sind hier optional (required=False ist Standard in ModelSerializer für diese Felder,
+        # außer das Model erzwingt es, aber im Model sind sie blank=True)

@@ -5,6 +5,8 @@ from rest_framework.authentication import TokenAuthentication
 from rest_framework.parsers import MultiPartParser, FormParser
 from djoser.views import UserViewSet as DjoserUserViewSet
 from .serializers import UserCreateSerializer, CraftsmanProfileSerializer, ProfilePictureSerializer, PublicUserSerializer
+from .serializers import UserProfileUpdateSerializer
+
 
 class RegisterView(generics.CreateAPIView):
     permission_classes = (permissions.AllowAny,)
@@ -41,3 +43,10 @@ class CustomUserViewSet(DjoserUserViewSet):
             return PublicUserSerializer
         # For all other actions (me, list, etc.), use the default from Djoser
         return super().get_serializer_class()
+
+class UserProfileUpdateView(generics.UpdateAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = UserProfileUpdateSerializer
+
+    def get_object(self):
+        return self.request.user.profile

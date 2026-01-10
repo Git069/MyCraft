@@ -71,7 +71,9 @@ export default {
   register(userData) { return apiClient.post('/auth/users/', userData); },
   login(credentials) { return apiClient.post('/auth/token/login/', credentials); },
   fetchCurrentUser() { return apiClient.get('/auth/users/me/'); },
-  updateUser(userData) { return apiClient.patch('/auth/users/me/', userData); },
+  updateUserProfile(profileData) {
+    return apiClient.patch('/auth/update-profile/', profileData);
+  },
   getUserDetails(userId) { return apiClient.get(`/auth/users/${userId}/`); },
   uploadProfilePicture(formData) { return apiClient.patch('/auth/upload-profile-picture/', formData, { headers: { 'Content-Type': 'multipart/form-data' } }); },
   becomeCraftsman(profileData) { return apiClient.post('/auth/become-craftsman/', profileData); },

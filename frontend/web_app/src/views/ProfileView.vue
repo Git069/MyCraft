@@ -4,16 +4,20 @@ import { useAuthStore } from '@/stores/auth';
 import api from '@/api';
 import StarRating from '@/components/StarRating.vue';
 import UserAvatar from '@/components/UserAvatar.vue';
+import EditProfileModal from '@/components/EditProfileModal.vue';
 
 const authStore = useAuthStore();
 const user = computed(() => authStore.currentUser);
 const loading = ref(true);
+const showEditModal = ref(false);
 
 // We will fetch the full user profile data, including reviews
 const fullUserProfile = ref(null);
 
-onMounted(async () => {
+// Funktion zum Laden der Profildaten (ausgelagert für Wiederverwendung)
+const fetchUserProfile = async () => {
   if (user.value) {
+    loading.value = true;
     try {
       const response = await api.getUserDetails(user.value.id);
       fullUserProfile.value = response.data;
@@ -23,7 +27,16 @@ onMounted(async () => {
       loading.value = false;
     }
   }
+};
+
+onMounted(() => {
+  fetchUserProfile();
 });
+
+// Callback, wenn das Profil erfolgreich bearbeitet wurde
+const handleProfileUpdate = () => {
+  fetchUserProfile(); // Daten neu laden, um Änderungen sofort anzuzeigen
+};
 
 const fullImageUrl = (url) => url ? `http://localhost:8000${url}` : null;
 
@@ -40,10 +53,18 @@ const formatReviewDate = (dateString) => {
 
 <template>
   <div class="container">
+
+    <EditProfileModal
+      v-if="fullUserProfile"
+      :isOpen="showEditModal"
+      :user="fullUserProfile"
+      @close="showEditModal = false"
+      @updated="handleProfileUpdate"
+    />
+
     <div v-if="loading" class="loading-state">Lade Profil...</div>
     <div v-else-if="fullUserProfile" class="profile-layout">
 
-      <!-- Left Column (Identity Card) -->
       <aside class="identity-card-wrapper">
         <div class="identity-card">
           <div class="card-content">
@@ -63,8 +84,7 @@ const formatReviewDate = (dateString) => {
             </div>
 
             <div class="cta-wrapper">
-              <!-- TODO: Implement Edit Modal -->
-              <button class="base-button primary-action">
+              <button class="base-button primary-action" @click="showEditModal = true">
                 Profil bearbeiten
               </button>
             </div>
@@ -72,11 +92,13 @@ const formatReviewDate = (dateString) => {
         </div>
       </aside>
 
-      <!-- Right Column (Content) -->
       <main class="main-content">
         <section class="about-section">
           <h2>Über mich</h2>
           <p class="bio">{{ fullUserProfile.bio || 'Keine Beschreibung vorhanden. Bearbeite dein Profil, um mehr über dich zu erzählen.' }}</p>
+
+          <p v-if="fullUserProfile.city" class="location">📍 {{ fullUserProfile.city }}</p>
+
           <p class="member-since">Mitglied seit {{ memberSince }}</p>
         </section>
 
@@ -134,7 +156,9 @@ const formatReviewDate = (dateString) => {
 /* Right Content */
 .main-content h2 { font-size: 1.5rem; margin-top: 0; margin-bottom: 24px; display: flex; align-items: center; gap: 8px; }
 .bio { line-height: 1.7; }
-.member-since { color: var(--color-text-light); font-size: 0.9rem; }
+.member-since { color: var(--color-text-light); font-size: 0.9rem; margin-top: 8px; }
+.location { color: #555; font-size: 0.95rem; margin: 8px 0; display: flex; align-items: center; gap: 4px; }
+
 .reviews-section { margin-top: 48px; }
 .reviews-grid { display: grid; grid-template-columns: 1fr; gap: 32px; }
 @media (min-width: 768px) { .reviews-grid { grid-template-columns: 1fr 1fr; } }
