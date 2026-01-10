@@ -9,7 +9,7 @@ const props = defineProps({
   showControls: { type: Boolean, default: false }
 });
 
-const emit = defineEmits(['delete', 'mark-completed', 'cancel', 'review']);
+const emit = defineEmits(['delete', 'edit', 'mark-completed', 'cancel', 'review']);
 const router = useRouter();
 
 const safeService = computed(() => props.service || {});
@@ -90,6 +90,7 @@ const displayTitle = computed(() => {
     const city = safeService.value.city || '';
     return city ? `${title} in ${city}` : title;
 });
+
 
 
 </script>

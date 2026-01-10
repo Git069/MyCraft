@@ -2,7 +2,9 @@
 import { ref, onMounted, computed } from 'vue';
 import api from '@/api';
 import JobCard from '@/components/JobCard.vue';
-import BookingCard from '@/components/BookingCard.vue';
+// import BookingCard entfernen wir hier nicht, falls es noch gebraucht wird,
+// aber wir brauchen jetzt OrderCard:
+import OrderCard from '@/components/OrderCard.vue';
 import { useAuthStore } from '@/stores/auth';
 import { useToastStore } from '@/stores/toast';
 
@@ -15,7 +17,6 @@ const myServices = ref([]);
 const myOrders = ref([]);
 const loading = ref(true);
 
-// TABS: Wir nutzen einheitlich 'services' und 'orders'
 const activeTab = ref('services');
 
 const fetchData = async () => {
@@ -26,7 +27,7 @@ const fetchData = async () => {
       api.getMyOrders()
     ]);
 
-    // Daten sicher zuweisen
+    // Services zuweisen (Code bleibt gleich)
     if (Array.isArray(servicesRes.data)) {
         myServices.value = [...servicesRes.data];
     } else if (servicesRes.data && Array.isArray(servicesRes.data.results)) {
@@ -35,7 +36,7 @@ const fetchData = async () => {
         myServices.value = [];
     }
 
-    // Orders zuweisen
+    // Orders zuweisen (Code bleibt gleich)
     if (Array.isArray(ordersRes.data)) {
         myOrders.value = [...ordersRes.data];
     } else if (ordersRes.data && Array.isArray(ordersRes.data.results)) {
@@ -54,14 +55,12 @@ const fetchData = async () => {
 
 onMounted(fetchData);
 
-// --- NEU: Computed Properties für die Auftrags-Aufteilung ---
+// Computed Properties für Orders
 const activeOrders = computed(() => {
-  // Zeige hier nur Anfragen (PENDING) und bestätigte Jobs (CONFIRMED)
   return myOrders.value.filter(o => ['PENDING', 'CONFIRMED'].includes(o.status));
 });
 
 const pastOrders = computed(() => {
-  // Zeige hier erledigte (COMPLETED) und stornierte (CANCELLED)
   return myOrders.value.filter(o => ['COMPLETED', 'CANCELLED'].includes(o.status));
 });
 
@@ -75,7 +74,7 @@ const handleMarkCompleted = async (bookingId) => {
   try {
     await api.markBookingAsCompleted(bookingId);
     toast.addToast("Auftrag erledigt!", "success");
-    await fetchData(); // await hinzugefügt für sauberen Reload
+    await fetchData();
   } catch (err) {
     toast.addToast("Fehler beim Speichern", "error");
   }
@@ -93,18 +92,26 @@ const handleCancelOrder = async (bookingId) => {
 };
 
 const handleDeleteService = async (serviceId) => {
-  // Sicherheitsabfrage, da Inserat komplett gelöscht wird
+  // Sicherheitsabfrage
   if (!confirm("Möchtest du dieses Inserat wirklich unwiderruflich löschen?")) return;
 
   try {
-    await api.deleteService(serviceId); // Ruft DELETE /services/{id}/ auf
+    // API Aufruf zum Löschen (DELETE /services/{id}/)
+    await api.deleteService(serviceId);
+
     toast.addToast("Inserat erfolgreich gelöscht", "success");
-    await fetchData(); // Liste aktualisieren
+
+    // Liste aktualisieren, um das gelöschte Element zu entfernen
+    fetchData();
   } catch (err) {
     console.error(err);
     toast.addToast("Fehler beim Löschen des Inserats", "error");
   }
 };
+
+
+
+
 </script>
 
 <template>
@@ -169,12 +176,10 @@ const handleDeleteService = async (serviceId) => {
           <section v-if="activeOrders.length > 0" class="section-group">
             <h3 class="section-title">Aktuelle Aufträge</h3>
             <div class="dashboard-grid">
-              <BookingCard
+              <OrderCard
                 v-for="order in activeOrders"
                 :key="order.id"
                 :booking="order"
-                :show-controls="true"
-                :is-craftsman-view="true"
                 @mark-completed="handleMarkCompleted"
                 @cancel="handleCancelOrder"
               />
@@ -188,12 +193,10 @@ const handleDeleteService = async (serviceId) => {
           <section v-if="pastOrders.length > 0" class="section-group past-section">
             <h3 class="section-title">Vergangene Aufträge</h3>
             <div class="dashboard-grid faded-grid">
-              <BookingCard
+              <OrderCard
                 v-for="order in pastOrders"
                 :key="order.id"
                 :booking="order"
-                :show-controls="true"
-                :is-craftsman-view="true"
                 @mark-completed="handleMarkCompleted"
                 @cancel="handleCancelOrder"
               />
@@ -208,60 +211,24 @@ const handleDeleteService = async (serviceId) => {
 </template>
 
 <style scoped>
+/* (Deine bestehenden Styles bleiben hier erhalten) */
 .page-wrapper { padding-top: var(--spacing-lg); padding-bottom: var(--spacing-xxl); }
-.dashboard-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  margin-bottom: var(--spacing-xl);
-  flex-wrap: wrap;
-  gap: 20px;
-  position: relative;
-  z-index: 100;
-}
+.dashboard-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: var(--spacing-xl); flex-wrap: wrap; gap: 20px; position: relative; z-index: 100; }
 .subtitle { color: var(--color-text-light); }
 .create-btn { padding: 10px 20px; font-weight: 600; text-decoration: none; display: inline-block; }
-
-/* Tabs Design */
 .tabs { display: flex; gap: 20px; border-bottom: 2px solid #eee; margin-bottom: 24px; }
 .tab-btn { background: none; border: none; padding: 12px 4px; font-size: 1rem; color: var(--color-text-light); cursor: pointer; position: relative; font-weight: 600; }
 .tab-btn.active { color: var(--color-primary); }
 .tab-btn.active::after { content: ''; position: absolute; bottom: -2px; left: 0; width: 100%; height: 2px; background-color: var(--color-primary); }
 .badge { background-color: var(--color-error); color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; margin-left: 8px; vertical-align: middle; }
-
-/* Grid Layout */
-.dashboard-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 24px;
-  width: 100%;
-}
-
-/* Neue Styles für die Sektionen */
+.dashboard-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 24px; width: 100%; }
 .section-group { margin-bottom: 40px; }
-.section-title {
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: var(--color-text);
-  margin-bottom: 16px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid #eee;
-}
-
+.section-title { font-size: 1.2rem; font-weight: 700; color: var(--color-text); margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid #eee; }
 .past-section .section-title { color: var(--color-text-light); }
 .faded-grid { opacity: 0.75; transition: opacity 0.3s; }
 .faded-grid:hover { opacity: 1; }
-
-.info-message {
-  padding: 20px 0;
-  color: var(--color-text-light);
-  font-style: italic;
-}
-
+.info-message { padding: 20px 0; color: var(--color-text-light); font-style: italic; }
 .empty-state { text-align: center; padding: 40px; background: #f9f9f9; border-radius: 12px; color: var(--color-text-light); }
 .loading-state { text-align: center; padding: 40px; color: var(--color-text-light); }
-
-@media (max-width: 600px) {
-  .dashboard-grid { grid-template-columns: 1fr; }
-}
+@media (max-width: 600px) { .dashboard-grid { grid-template-columns: 1fr; } }
 </style>
