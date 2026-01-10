@@ -1,7 +1,8 @@
+/* In frontend/web_app/src/components/JobCard.vue */
+
 <script setup>
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
-import StarRating from './StarRating.vue';
 
 const props = defineProps({
   service: { type: Object, required: true },
@@ -11,9 +12,58 @@ const props = defineProps({
 const emit = defineEmits(['delete', 'mark-completed', 'cancel', 'review']);
 const router = useRouter();
 
-// SICHERHEITS-CHECK: Wenn kein Service da ist, brechen wir nicht ab, sondern geben null zurück
 const safeService = computed(() => props.service || {});
 
+// --- BILDER QUELLEN (Aktualisierte, stabile Unsplash IDs) ---
+const tradeImages = {
+  // WICHTIG: Keys müssen mit den Backend-IDs (Jobs Model) übereinstimmen
+  PLUMBER: 'https://images.unsplash.com/photo-1581244277943-fe4a9c777189?auto=format&fit=crop&w=500&q=80',
+  ELECTRICIAN: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=500&q=80',
+  PAINTER: 'https://images.unsplash.com/photo-1589939705384-5185137a7f0f?auto=format&fit=crop&w=500&q=80',
+  // Neuer Link für Carpenter (Tischler), da der alte wohl kaputt war:
+  CARPENTER: 'https://images.unsplash.com/photo-1601058268499-e52658b8bb88?auto=format&fit=crop&w=500&q=80',
+  GARDENER: 'https://images.unsplash.com/photo-1558904541-efa843a96f01?auto=format&fit=crop&w=500&q=80',
+  OTHER: 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?auto=format&fit=crop&w=500&q=80'
+};
+
+// --- INTELLIGENTE BILD-ZUORDNUNG ---
+const serviceImage = computed(() => {
+  const rawTrade = safeService.value.trade;
+
+  // 1. Debugging: Schau in die Browser-Konsole (F12), was wirklich ankommt!
+  // console.log(`Job: ${safeService.value.title}, Trade Raw:`, rawTrade);
+
+  if (!rawTrade) return tradeImages.OTHER;
+
+  // 2. Normalisierung: Alles in Großbuchstaben und Leerzeichen weg
+  const normalizedTrade = String(rawTrade).toUpperCase().trim();
+
+  // 3. Direkter Treffer? (z.B. "CARPENTER")
+  if (tradeImages[normalizedTrade]) {
+    return tradeImages[normalizedTrade];
+  }
+
+  // 4. Fallback für deutsche Begriffe oder Mapping-Fehler
+  // Falls das Backend "Tischler" statt "CARPENTER" schickt
+  if (normalizedTrade.includes('TISCHLER') || normalizedTrade.includes('SCHREINER')) return tradeImages.CARPENTER;
+  if (normalizedTrade.includes('MALER') || normalizedTrade.includes('LACKIERER')) return tradeImages.PAINTER;
+  if (normalizedTrade.includes('ELEKTRIK')) return tradeImages.ELECTRICIAN;
+  if (normalizedTrade.includes('SANITÄR') || normalizedTrade.includes('HEIZUNG') || normalizedTrade.includes('KLEMPNER')) return tradeImages.PLUMBER;
+  if (normalizedTrade.includes('GARTEN')) return tradeImages.GARDENER;
+
+  return tradeImages.OTHER;
+});
+
+const handleImageError = (e) => {
+  // Wenn das Bild nicht lädt, wird es durch das 'OTHER' Bild ersetzt.
+  // Wir prüfen, ob wir nicht schon beim Fallback sind, um Loops zu vermeiden.
+  if (e.target.src !== tradeImages.OTHER) {
+    console.warn(`Bild konnte nicht geladen werden für Trade: ${safeService.value.trade}. Lade Fallback.`);
+    e.target.src = tradeImages.OTHER;
+  }
+};
+
+// ... Rest der Logik (formattedPrice, formattedDate, navigation etc.) ...
 const goToDetail = () => {
   if (safeService.value.id) {
     router.push({ name: 'ServiceDetail', params: { id: safeService.value.id } });
@@ -24,21 +74,6 @@ const goToEdit = () => {
     router.push({ name: 'ServiceEdit', params: { id: safeService.value.id } });
   }
 };
-
-const tradeImages = {
-  PLUMBER: 'https://images.unsplash.com/photo-1581244277943-fe4a9c777189?auto=format&fit=crop&w=400&q=80',
-  ELECTRICIAN: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=400&q=80',
-  PAINTER: 'https://images.unsplash.com/photo-1589939705384-5185137a7f0f?auto=format&fit=crop&w=400&q=80',
-  CARPENTER: 'https://images.unsplash.com/photo-1611021061285-19a87a1964e2?auto=format&fit=crop&w=400&q=80',
-  GARDENER: 'https://images.unsplash.com/photo-1558904541-efa843a96f01?auto=format&fit=crop&w=400&q=80',
-  OTHER: 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?auto=format&fit=crop&w=400&q=80'
-};
-
-// FIX: Prüfen, ob safeService.value.trade existiert
-const serviceImage = computed(() => {
-  const trade = safeService.value.trade;
-  return tradeImages[trade] || tradeImages.OTHER;
-});
 
 const formattedPrice = computed(() => {
   return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' })
@@ -51,7 +86,6 @@ const formattedDate = computed(() => {
 });
 
 const displayTitle = computed(() => {
-    // Fallback, falls Titel oder Stadt fehlen
     const title = safeService.value.title || 'Angebot';
     const city = safeService.value.city || '';
     return city ? `${title} in ${city}` : title;
@@ -61,7 +95,12 @@ const displayTitle = computed(() => {
 <template>
   <div v-if="service && service.id" class="job-card">
     <div class="image-container" @click="goToDetail">
-      <img :src="serviceImage" :alt="service.title" class="job-image" />
+      <img
+        :src="serviceImage"
+        :alt="service.title"
+        class="job-image"
+        @error="handleImageError"
+      />
       <div v-if="showControls && service.status" class="status-badge" :class="`status-${service.status.toLowerCase()}`">
         {{ service.status }}
       </div>
