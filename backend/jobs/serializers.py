@@ -58,11 +58,18 @@ class BookingSerializer(serializers.ModelSerializer):
     )
 
     customer_name = serializers.CharField(source='customer.username', read_only=True)
+    review = serializers.SerializerMethodField()
 
     class Meta:
         model = Booking
-        fields = ['id', 'service', 'service_id', 'customer', 'customer_name', 'contractor', 'status', 'price', 'scheduled_date', 'created_at']
-        read_only_fields = ['customer', 'contractor', 'price', 'status']
+        fields = ['id', 'service', 'service_id', 'customer', 'customer_name', 'contractor', 'status', 'price', 'scheduled_date', 'created_at', 'review']
+        read_only_fields = ['customer', 'contractor', 'price', 'status', 'review']
+
+    def get_review(self, obj):
+        try:
+            return obj.review.id
+        except Exception:
+            return None
 
     def validate(self, data):
         """

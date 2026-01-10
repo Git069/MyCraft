@@ -26,9 +26,6 @@ const fetchData = async () => {
       api.getMyOrders()
     ]);
 
-    // Debugging (optional)
-    console.log("Services:", servicesRes.data);
-
     // Daten sicher zuweisen
     if (Array.isArray(servicesRes.data)) {
         myServices.value = [...servicesRes.data];
@@ -57,12 +54,28 @@ const fetchData = async () => {
 
 onMounted(fetchData);
 
+// --- NEU: Computed Properties für die Auftrags-Aufteilung ---
+const activeOrders = computed(() => {
+  // Zeige hier nur Anfragen (PENDING) und bestätigte Jobs (CONFIRMED)
+  return myOrders.value.filter(o => ['PENDING', 'CONFIRMED'].includes(o.status));
+});
+
+const pastOrders = computed(() => {
+  // Zeige hier erledigte (COMPLETED) und stornierte (CANCELLED)
+  return myOrders.value.filter(o => ['COMPLETED', 'CANCELLED'].includes(o.status));
+});
+
+const pendingOrdersCount = computed(() => {
+  return myOrders.value.filter(o => o.status === 'PENDING' || o.status === 'CONFIRMED').length;
+});
+
 // Actions
 const handleMarkCompleted = async (bookingId) => {
+  if (!confirm("Möchtest du diesen Auftrag wirklich als erledigt markieren?")) return;
   try {
     await api.markBookingAsCompleted(bookingId);
     toast.addToast("Auftrag erledigt!", "success");
-    fetchData();
+    await fetchData(); // await hinzugefügt für sauberen Reload
   } catch (err) {
     toast.addToast("Fehler beim Speichern", "error");
   }
@@ -73,15 +86,11 @@ const handleCancelOrder = async (bookingId) => {
   try {
     await api.cancelBooking(bookingId);
     toast.addToast("Storniert", "info");
-    fetchData();
+    await fetchData();
   } catch (err) {
     toast.addToast("Fehler beim Stornieren", "error");
   }
 };
-
-const pendingOrdersCount = computed(() => {
-  return myOrders.value.filter(o => o.status === 'PENDING' || o.status === 'CONFIRMED').length;
-});
 </script>
 
 <template>
@@ -136,20 +145,47 @@ const pendingOrdersCount = computed(() => {
       </div>
 
       <div v-if="activeTab === 'orders'">
+
         <div v-if="myOrders.length === 0" class="empty-state">
           <p>Noch keine Aufträge erhalten.</p>
         </div>
-        <div v-else class="dashboard-grid">
-          <BookingCard
-            v-for="order in myOrders"
-            :key="order.id"
-            :booking="order"
-            :show-controls="true"
-            :is-craftsman-view="true"
-            @mark-completed="handleMarkCompleted"
-            @cancel="handleCancelOrder"
-          />
+
+        <div v-else>
+          <section v-if="activeOrders.length > 0" class="section-group">
+            <h3 class="section-title">Aktuelle Aufträge</h3>
+            <div class="dashboard-grid">
+              <BookingCard
+                v-for="order in activeOrders"
+                :key="order.id"
+                :booking="order"
+                :show-controls="true"
+                :is-craftsman-view="true"
+                @mark-completed="handleMarkCompleted"
+                @cancel="handleCancelOrder"
+              />
+            </div>
+          </section>
+
+          <div v-else-if="pastOrders.length > 0" class="info-message">
+            <p>Aktuell keine offenen Aufträge.</p>
+          </div>
+
+          <section v-if="pastOrders.length > 0" class="section-group past-section">
+            <h3 class="section-title">Vergangene Aufträge</h3>
+            <div class="dashboard-grid faded-grid">
+              <BookingCard
+                v-for="order in pastOrders"
+                :key="order.id"
+                :booking="order"
+                :show-controls="true"
+                :is-craftsman-view="true"
+                @mark-completed="handleMarkCompleted"
+                @cancel="handleCancelOrder"
+              />
+            </div>
+          </section>
         </div>
+
       </div>
 
     </div>
@@ -165,8 +201,6 @@ const pendingOrdersCount = computed(() => {
   margin-bottom: var(--spacing-xl);
   flex-wrap: wrap;
   gap: 20px;
-
-  /* NEU: Hebt den Header-Bereich (inkl. Dropdowns) über den restlichen Inhalt */
   position: relative;
   z-index: 100;
 }
@@ -180,12 +214,33 @@ const pendingOrdersCount = computed(() => {
 .tab-btn.active::after { content: ''; position: absolute; bottom: -2px; left: 0; width: 100%; height: 2px; background-color: var(--color-primary); }
 .badge { background-color: var(--color-error); color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; margin-left: 8px; vertical-align: middle; }
 
-/* Grid Layout (angepasst an deinen JobCard Style) */
+/* Grid Layout */
 .dashboard-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 24px;
   width: 100%;
+}
+
+/* Neue Styles für die Sektionen */
+.section-group { margin-bottom: 40px; }
+.section-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--color-text);
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #eee;
+}
+
+.past-section .section-title { color: var(--color-text-light); }
+.faded-grid { opacity: 0.75; transition: opacity 0.3s; }
+.faded-grid:hover { opacity: 1; }
+
+.info-message {
+  padding: 20px 0;
+  color: var(--color-text-light);
+  font-style: italic;
 }
 
 .empty-state { text-align: center; padding: 40px; background: #f9f9f9; border-radius: 12px; color: var(--color-text-light); }

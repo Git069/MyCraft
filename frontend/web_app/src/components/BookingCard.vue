@@ -1,6 +1,7 @@
 <script setup>
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { useAuthStore } from '@/stores/auth'; // Store importieren
 
 const props = defineProps({
   booking: { type: Object, required: true },
@@ -9,9 +10,15 @@ const props = defineProps({
 
 const emit = defineEmits(['review', 'mark-completed', 'cancel']);
 const router = useRouter();
+const authStore = useAuthStore(); // Store nutzen
+
+// Prüfen, ob der eingeloggte User der Handwerker ist
+const isContractor = computed(() => {
+  return authStore.user && authStore.user.id === props.booking.contractor;
+});
+
 const isMenuOpen = ref(false);
 
-// Navigate to the service detail page
 const goToDetail = () => router.push({ name: 'JobDetail', params: { id: props.booking.service.id } });
 
 const tradeImages = {
@@ -56,22 +63,24 @@ const displayTitle = computed(() => props.booking.service.title);
     </div>
 
     <div v-if="showControls" class="card-footer-actions" @click.stop>
-      <!-- Actions for CONFIRMED bookings -->
-      <div v-if="booking.status === 'CONFIRMED'" class="action-group">
+
+      <div v-if="booking.status === 'CONFIRMED' && isContractor" class="action-group">
         <button class="action-btn complete" @click="$emit('mark-completed', booking.id)">Als erledigt markieren</button>
       </div>
 
-      <!-- Actions for COMPLETED bookings -->
+      <div v-else-if="booking.status === 'CONFIRMED' && !isContractor" class="action-group disabled">
+        <span>Wartet auf Ausführung</span>
+      </div>
+
       <div v-else-if="booking.status === 'COMPLETED'">
-        <div v-if="!booking.review" class="action-group">
+        <div v-if="!booking.review && !isContractor" class="action-group">
           <button class="action-btn review" @click="$emit('review', booking)">Bewerten</button>
         </div>
         <div v-else class="review-display">
-          <span>Bewertung abgegeben</span>
+          <span>{{ isContractor ? 'Auftrag abgeschlossen' : 'Bewertung abgegeben' }}</span>
         </div>
       </div>
 
-      <!-- No actions for other states -->
       <div v-else class="action-group disabled">
         <span>{{ booking.status === 'CANCELLED' ? 'Storniert' : 'In Bearbeitung' }}</span>
       </div>

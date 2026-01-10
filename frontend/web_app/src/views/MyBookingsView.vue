@@ -1,7 +1,8 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import api from '@/api';
 import BookingCard from '@/components/BookingCard.vue';
+import ReviewModal from '@/components/ReviewModal.vue';
 import { useToastStore } from '@/stores/toast';
 
 const bookings = ref([]);
@@ -9,11 +10,14 @@ const loading = ref(true);
 const error = ref(null);
 const toast = useToastStore();
 
+// --- Review State ---
+const showReviewModal = ref(false);
+const reviewTarget = ref(null);
+
 const fetchBookings = async () => {
   loading.value = true;
   error.value = null;
   try {
-    // Ruft /bookings/my_bookings/ auf (Backend filtert nach customer=request.user)
     const response = await api.getMyBookings();
     bookings.value = response.data;
   } catch (err) {
@@ -26,17 +30,60 @@ const fetchBookings = async () => {
 
 onMounted(fetchBookings);
 
-// Funktion zum Stornieren (wird vom Event der BookingCard ausgelöst)
+// --- Computed Properties für die Aufteilung ---
+const activeBookings = computed(() => {
+  return bookings.value.filter(b => {
+    // Stornierte sind immer vergangen
+    if (b.status === 'CANCELLED') return false;
+    // Erledigte mit Bewertung sind vergangen
+    if (b.status === 'COMPLETED' && b.review) return false;
+    // Alles andere (Pending, Confirmed, Completed ohne Review) ist "Aktuell"
+    return true;
+  });
+});
+
+const pastBookings = computed(() => {
+  return bookings.value.filter(b => {
+    // Stornierte ODER (Erledigte MIT Bewertung)
+    return b.status === 'CANCELLED' || (b.status === 'COMPLETED' && b.review);
+  });
+});
+
+
 const handleCancel = async (bookingId) => {
   if (!confirm("Möchtest du diese Buchung wirklich stornieren?")) return;
 
   try {
     await api.cancelBooking(bookingId);
     toast.addToast("Buchung erfolgreich storniert", "success");
-    // Liste aktualisieren, um den neuen Status anzuzeigen
     await fetchBookings();
   } catch (err) {
     toast.addToast("Fehler beim Stornieren der Buchung", "error");
+  }
+};
+
+const openReviewModal = (booking) => {
+  reviewTarget.value = {
+    id: booking.id,
+    title: booking.service.title
+  };
+  showReviewModal.value = true;
+};
+
+const handleReviewSubmit = async (payload) => {
+  try {
+    await api.createReview({
+      booking: payload.job,
+      rating: payload.rating,
+      comment: payload.comment
+    });
+
+    toast.addToast("Bewertung erfolgreich gesendet!", "success");
+    showReviewModal.value = false;
+    await fetchBookings();
+  } catch (err) {
+    const msg = err.response?.data?.detail || "Fehler beim Senden der Bewertung.";
+    toast.addToast(msg, "error");
   }
 };
 </script>
@@ -66,15 +113,49 @@ const handleCancel = async (bookingId) => {
       </router-link>
     </div>
 
-    <div v-else class="bookings-grid">
-      <BookingCard
-        v-for="booking in bookings"
-        :key="booking.id"
-        :booking="booking"
-        :show-controls="true"
-        @cancel="handleCancel"
-      />
+    <div v-else class="content-wrapper">
+
+      <section v-if="activeBookings.length > 0" class="section-group">
+        <h2 class="section-title">Aktuelle Aufträge</h2>
+        <div class="bookings-grid">
+          <BookingCard
+            v-for="booking in activeBookings"
+            :key="booking.id"
+            :booking="booking"
+            :show-controls="true"
+            @cancel="handleCancel"
+            @review="openReviewModal"
+          />
+        </div>
+      </section>
+
+      <div v-else-if="pastBookings.length > 0" class="info-message">
+        <p>Aktuell keine offenen Aufträge.</p>
+      </div>
+
+      <section v-if="pastBookings.length > 0" class="section-group past-section">
+        <h2 class="section-title">Vergangene Aufträge</h2>
+        <div class="bookings-grid faded-grid">
+          <BookingCard
+            v-for="booking in pastBookings"
+            :key="booking.id"
+            :booking="booking"
+            :show-controls="true"
+            @cancel="handleCancel"
+            @review="openReviewModal"
+          />
+        </div>
+      </section>
+
     </div>
+
+    <ReviewModal
+      v-if="reviewTarget"
+      :isOpen="showReviewModal"
+      :job="reviewTarget"
+      @close="showReviewModal = false"
+      @submit="handleReviewSubmit"
+    />
   </div>
 </template>
 
@@ -99,13 +180,42 @@ const handleCancel = async (bookingId) => {
   font-size: 1.1rem;
 }
 
+/* Neue Styles für die Sektionen */
+.section-group {
+  margin-bottom: var(--spacing-xxl);
+}
+
+.section-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--color-text);
+  margin-bottom: var(--spacing-lg);
+  padding-bottom: var(--spacing-xs);
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.past-section .section-title {
+  color: var(--color-text-light);
+}
+
 .bookings-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: var(--spacing-lg);
 }
 
-/* Empty State Styles */
+/* Optional: Vergangene Aufträge leicht ausblassen, um Fokus auf Aktuelles zu lenken */
+.faded-grid {
+  opacity: 0.85;
+}
+
+.info-message {
+  padding: 20px 0;
+  color: var(--color-text-light);
+  font-style: italic;
+}
+
+/* Empty State Styles (wie zuvor) */
 .empty-state {
   text-align: center;
   padding: var(--spacing-xxl) 0;
