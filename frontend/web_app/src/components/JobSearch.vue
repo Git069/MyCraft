@@ -1,6 +1,6 @@
 <script setup>
-import { ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, onMounted, watch } from 'vue'; // onMounted und watch hinzufügen
+import { useRouter, useRoute } from 'vue-router'; // useRoute hinzufügen
 
 const props = defineProps({
   enableRouting: {
@@ -13,9 +13,25 @@ const props = defineProps({
 const emit = defineEmits(['search-triggered']);
 
 const router = useRouter();
-const searchTerm = ref('');
-const location = ref('');
+const route = useRoute(); // Route Hook holen
+const searchTerm = ref(route.query.search || '');
+const location = ref(route.query.city || '');
 const activeField = ref(null);
+
+const getInitialSearchTerm = () => {
+  // 1. Priorität: Expliziter Suchtext in der URL
+  if (route.query.search) return route.query.search;
+
+  // 2. Priorität: Wenn nach Gewerk gefiltert wurde, zeigen wir den Namen an
+  if (route.query.trade) {
+    // categories ist weiter unten definiert, wir greifen hier aber darauf zu.
+    // Da 'categories' const ist, müssen wir sicherstellen, dass es vor diesem Aufruf existiert
+    // oder die Zuweisung nach der Definition machen.
+    // Lösung: Wir setzen den Wert erst in onMounted oder nach der Definition der Categories.
+    return '';
+  }
+  return '';
+};
 
 // --- DATA: Smart Suggestions ---
 const categories = [
@@ -72,6 +88,7 @@ const locations = [
     icon: '🥨'
   }
 ];
+
 
 // --- ACTIONS ---
 
@@ -133,6 +150,35 @@ const selectLocation = (loc) => {
   }
   activeField.value = null;
 };
+
+onMounted(() => {
+  // Falls wir eine "Trade"-Suche ohne Text haben (z.B. Klick auf Icon auf der HomeView),
+  // füllen wir das Suchfeld mit dem passenden Titel (z.B. "Maler & Lackierer")
+  if (!searchTerm.value && route.query.trade) {
+    const category = categories.find(c => c.id === route.query.trade);
+    if (category) {
+      searchTerm.value = category.title;
+    }
+  }
+
+  // Falls Location in URL ist, aber noch nicht im State
+  if (!location.value && route.query.city) {
+    location.value = route.query.city;
+  }
+});
+
+// --- OPTIONAL: Auch auf Browser-Zurück-Button reagieren ---
+watch(() => route.query, (newQuery) => {
+  // Wenn sich die URL ändert (z.B. User drückt "Zurück"), Inputs aktualisieren
+  if (newQuery.search !== undefined) searchTerm.value = newQuery.search;
+  if (newQuery.city !== undefined) location.value = newQuery.city;
+
+  // Spezialfall: Trade ändert sich, aber Search ist leer
+  if (!newQuery.search && newQuery.trade) {
+     const category = categories.find(c => c.id === newQuery.trade);
+     if (category) searchTerm.value = category.title;
+  }
+});
 </script>
 
 <template>
