@@ -126,6 +126,20 @@ onMounted(() => fetchServices());
 }
 .main-content-section { padding: var(--spacing-xxl) 0; }
 .section-title { font-size: 2rem; font-weight: 700; margin-top: 0; margin-bottom: var(--spacing-xl); text-align: left; }
-.jobs-grid { display: grid; gap: 24px; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
-.empty-state { text-align: center; padding: 48px; }
+.jobs-grid {
+  display: grid;
+  gap: 24px;
+  /* Mobile First: Flexibles Layout für Handys und kleine Tablets.
+     Hier nutzen wir auto-fill, damit es auf kleinen Screens automatisch umbricht. */
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+}
+
+@media (min-width: 1024px) {
+  .jobs-grid {
+    /* repeat(3, 1fr) bedeutet: Teile die Breite IMMER durch 3.
+       Egal ob du 1, 2 oder 10 Ergebnisse hast.
+       Eine einzelne Karte ist damit exakt so breit wie eine Karte in einer vollen Reihe. */
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
 </style>

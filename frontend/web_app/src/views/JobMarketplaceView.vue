@@ -77,7 +77,21 @@ watch(() => route.query, fetchJobs);
 /* Deine Styles bleiben unverändert */
 .market-header { padding: var(--spacing-md) 0; margin-bottom: var(--spacing-xl); border-bottom: 1px solid var(--color-border); }
 .compact-search-wrapper { max-width: 500px; margin: 0 auto; transform: scale(0.85); transform-origin: center; }
-.jobs-grid { display: grid; gap: 24px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+.jobs-grid {
+  display: grid;
+  gap: 24px;
+  /* WICHTIG: Hier 'auto-fill' statt 'auto-fit' nutzen!
+     'auto-fit' kollabiert leere Spalten und streckt den Inhalt.
+     'auto-fill' behält die leeren Spalten bei -> Kein Strecken. */
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+
+@media (min-width: 1024px) {
+  .jobs-grid {
+    /* Auf großen Screens erzwingen wir exakt 3 Spalten */
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
 .empty-state { text-align: center; padding: var(--spacing-xxl) 0; }
 .error-message { text-align: center; padding: var(--spacing-lg); color: var(--color-error); }
 </style>
