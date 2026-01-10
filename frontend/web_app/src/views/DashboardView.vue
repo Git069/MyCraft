@@ -91,6 +91,20 @@ const handleCancelOrder = async (bookingId) => {
     toast.addToast("Fehler beim Stornieren", "error");
   }
 };
+
+const handleDeleteService = async (serviceId) => {
+  // Sicherheitsabfrage, da Inserat komplett gelöscht wird
+  if (!confirm("Möchtest du dieses Inserat wirklich unwiderruflich löschen?")) return;
+
+  try {
+    await api.deleteService(serviceId); // Ruft DELETE /services/{id}/ auf
+    toast.addToast("Inserat erfolgreich gelöscht", "success");
+    await fetchData(); // Liste aktualisieren
+  } catch (err) {
+    console.error(err);
+    toast.addToast("Fehler beim Löschen des Inserats", "error");
+  }
+};
 </script>
 
 <template>
@@ -140,6 +154,7 @@ const handleCancelOrder = async (bookingId) => {
             :key="service.id"
             :service="service"
             :show-controls="true"
+            @delete="handleDeleteService"
           />
         </div>
       </div>

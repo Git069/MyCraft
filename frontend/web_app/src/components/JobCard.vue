@@ -90,6 +90,8 @@ const displayTitle = computed(() => {
     const city = safeService.value.city || '';
     return city ? `${title} in ${city}` : title;
 });
+
+
 </script>
 
 <template>
@@ -119,7 +121,8 @@ const displayTitle = computed(() => {
     <div v-if="showControls" class="card-footer-actions" @click.stop>
         <div v-if="service.status === 'OPEN'" class="action-group">
         <button class="action-btn edit" @click="goToEdit">Bearbeiten</button>
-        <button class="action-btn cancel" @click="$emit('cancel', service.id)">Stornieren</button>
+        <button class="action-btn delete" @click="$emit('delete', service.id)">
+    Löschen </button>
       </div>
     </div>
   </div>
