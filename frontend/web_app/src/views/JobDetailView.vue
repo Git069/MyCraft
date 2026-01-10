@@ -14,6 +14,11 @@ const loading = ref(true);
 const error = ref(null);
 const isStartingConversation = ref(false);
 
+// --- NEU: Buchungs-State ---
+const bookingDate = ref('');
+const isBooking = ref(false);
+const bookingError = ref(null);
+
 // KI State
 const aiAdvice = ref(null);
 const loadingAi = ref(false);
@@ -23,10 +28,43 @@ const jobId = route.params.id;
 const isLoggedIn = computed(() => authStore.isLoggedIn);
 const currentUser = computed(() => authStore.currentUser);
 
+// Berechnet das heutige Datum im Format YYYY-MM-DD für das min-Attribut des Inputs
+const minDate = computed(() => {
+  const today = new Date();
+  return today.toISOString().split('T')[0];
+});
+
 const canContact = computed(() => {
   if (!isLoggedIn.value || !job.value) return false;
   return job.value.contractor !== currentUser.value?.id;
 });
+
+// --- NEU: Buchungs-Logik ---
+const handleBooking = async () => {
+  if (!bookingDate.value) return;
+
+  isBooking.value = true;
+  bookingError.value = null;
+
+  try {
+    // Wir senden nur die ID des Services und das Datum.
+    // Der Preis wird im Backend automatisch vom Service übernommen.
+    await api.createBooking({
+      service_id: job.value.id,
+      scheduled_date: bookingDate.value
+    });
+
+    // Nach Erfolg leiten wir zu "Meine Buchungen" weiter
+    router.push({ name: 'MyBookings' });
+  } catch (err) {
+    // Falls das Backend einen Fehler wirft (z.B. "Datum schon belegt")
+    bookingError.value = err.response?.data?.scheduled_date?.[0] ||
+                         err.response?.data?.non_field_errors?.[0] ||
+                         "Buchung fehlgeschlagen.";
+  } finally {
+    isBooking.value = false;
+  }
+};
 
 const handleContact = async () => {
   if (!canContact.value) return;
@@ -44,12 +82,10 @@ const handleContact = async () => {
   }
 };
 
-// -- NEU: KI Preis-Check Funktion --
 const getPriceAdvice = async () => {
   loadingAi.value = true;
   aiAdvice.value = null;
   try {
-    // Ruft die neue Funktion in api.js auf
     const response = await api.getPriceAdvice(jobId);
     aiAdvice.value = response.data.advice;
   } catch (err) {
@@ -59,7 +95,6 @@ const getPriceAdvice = async () => {
     loadingAi.value = false;
   }
 };
-// ----------------------------------
 
 const fetchJobDetails = async () => {
   loading.value = true;
@@ -81,6 +116,7 @@ const formatPrice = (price) => {
   return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(price);
 };
 
+// ... Bilder Logik (bleibt gleich) ...
 const tradeImages = {
   PLUMBER: 'https://images.unsplash.com/photo-1581244277943-fe4a9c777189?auto=format&fit=crop&w=800&q=80',
   ELECTRICIAN: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=800&q=80',
@@ -119,8 +155,8 @@ const heroImage = computed(() => {
               <div class="avatar-placeholder"></div>
             </RouterLink>
             <div class="contractor-text">
-              <span class="title">Auftrag von {{ job.contractor_username }}</span>
-              <span class="subtitle">Seit 2024 dabei</span>
+              <span class="title">Auftrag von {{ job.contractor_username || 'Unbekannt' }}</span>
+              <span class="subtitle">Verifizierter Handwerker</span>
             </div>
           </section>
 
@@ -139,7 +175,7 @@ const heroImage = computed(() => {
             <p>{{ job.description }}</p>
           </section>
 
-          <div class="divider"></div>
+           <div class="divider"></div>
 
           <section class="ai-section">
             <div class="ai-header">
@@ -149,23 +185,17 @@ const heroImage = computed(() => {
             <p class="ai-intro">Unsicher beim Preis? Lass dir von unserer KI eine unverbindliche Einschätzung geben.</p>
 
             <div v-if="!aiAdvice" class="ai-action">
-              <button
-                @click="getPriceAdvice"
-                class="base-button ai-btn"
-                :disabled="loadingAi"
-              >
+              <button @click="getPriceAdvice" class="base-button ai-btn" :disabled="loadingAi">
                 {{ loadingAi ? 'KI analysiert...' : 'Preis einschätzen lassen' }}
               </button>
             </div>
 
             <div v-else class="ai-result">
-              <div class="result-bubble">
-                {{ aiAdvice }}
-              </div>
+              <div class="result-bubble">{{ aiAdvice }}</div>
               <button @click="getPriceAdvice" class="retry-link">Neu berechnen</button>
             </div>
           </section>
-          </div>
+        </div>
 
         <div class="right-column">
           <aside class="action-card">
@@ -175,18 +205,52 @@ const heroImage = computed(() => {
             </div>
 
             <div class="action-body">
-              <button v-if="canContact" @click="handleContact" class="base-button primary-action" :disabled="isStartingConversation">
-                {{ isStartingConversation ? 'Wird gesendet...' : 'Handwerker kontaktieren' }}
+
+              <button
+                v-if="canContact"
+                @click="handleContact"
+                class="base-button secondary-action"
+                :disabled="isStartingConversation"
+              >
+                {{ isStartingConversation ? 'Öffne Chat...' : 'Nachricht schreiben' }}
               </button>
-              <div v-else-if="!isLoggedIn" class="login-prompt">
-                <router-link :to="{ name: 'Login' }">Melde dich an</router-link>, um zu kontaktieren.
+
+              <div v-if="canContact" class="separator">oder direkt buchen</div>
+
+              <div v-if="canContact" class="booking-widget">
+                <label for="booking-date" class="date-label">Wunschtermin wählen:</label>
+                <input
+                  id="booking-date"
+                  type="date"
+                  v-model="bookingDate"
+                  class="date-input"
+                  :min="minDate"
+                />
+
+                <button
+                  @click="handleBooking"
+                  class="base-button primary-action"
+                  :disabled="!bookingDate || isBooking"
+                >
+                  {{ isBooking ? 'Wird gebucht...' : 'Kostenpflichtig buchen' }}
+                </button>
+
+                <div v-if="bookingError" class="error-message">{{ bookingError }}</div>
               </div>
+
+              <div v-else-if="!isLoggedIn" class="login-prompt">
+                <router-link :to="{ name: 'Login' }">Melde dich an</router-link>, um diesen Auftrag zu buchen.
+              </div>
+
+              <div v-else-if="!canContact" class="own-job-info">
+                Dies ist dein eigener Auftrag.
+              </div>
+
             </div>
 
-            <div v-if="error && isStartingConversation" class="error-message booking-error">{{ error }}</div>
-
             <footer class="action-footer">
-              <p>Du gehst noch keine verbindliche Buchung ein.</p>
+              <p v-if="bookingDate">Mit Klick auf "Kostenpflichtig buchen" gehst du einen verbindlichen Vertrag ein.</p>
+              <p v-else>Wähle einen Termin für die Buchung.</p>
             </footer>
           </aside>
         </div>
@@ -196,7 +260,7 @@ const heroImage = computed(() => {
 </template>
 
 <style scoped>
-/* Bestehende Styles */
+/* Bestehende Styles bleiben erhalten ... */
 .detail-page-wrapper { padding: var(--spacing-lg) 0; }
 .image-hero-section { width: 100%; max-height: 400px; overflow: hidden; border-radius: 16px; margin-bottom: var(--spacing-xl); }
 .hero-image { width: 100%; height: 100%; object-fit: cover; }
@@ -214,63 +278,64 @@ const heroImage = computed(() => {
 .description-section h2 { font-size: 1.5rem; margin-top: 0; margin-bottom: var(--spacing-md); }
 .description-section p { line-height: 1.7; white-space: pre-wrap; }
 
-/* Rechte Spalte */
+/* Rechte Spalte & Card Styles */
 .right-column { position: relative; }
 .action-card { background-color: white; border: 1px solid var(--color-border); border-radius: 12px; padding: 24px; box-shadow: 0 6px 16px rgba(0,0,0,0.12); position: sticky; top: 120px; }
 .price-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 24px; }
 .price { font-size: 1.5rem; font-weight: 800; }
 .price-label { color: var(--color-text-light); font-size: 1rem; }
-.primary-action { width: 100%; font-size: 1rem; padding: 14px; font-weight: 600; cursor: pointer; border: none; background-color: var(--color-primary); color: white; border-radius: 8px; }
+
+.action-body { display: flex; flex-direction: column; gap: 12px; }
+
+/* NEU: Styles für Buchungswidget */
+.booking-widget { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+.date-label { font-size: 0.9rem; font-weight: 600; color: var(--color-text); }
+.date-input {
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 1rem;
+  width: 100%;
+}
+
+.primary-action { width: 100%; font-size: 1rem; padding: 14px; font-weight: 600; cursor: pointer; border: none; background-color: var(--color-primary); color: white; border-radius: 8px; transition: background-color 0.2s; }
 .primary-action:hover { background-color: var(--color-primary-dark, #0056b3); }
 .primary-action:disabled { background-color: #ccc; cursor: not-allowed; }
-.action-footer { text-align: center; font-size: 0.85rem; color: var(--color-text-light); margin-top: 16px; }
 
-/* --- NEU: KI Styles --- */
-.ai-section {
-  background: linear-gradient(to right, #f8f9fa, #e3f2fd);
-  padding: 24px;
-  border-radius: 12px;
-  border: 1px solid #d1e7dd;
-  margin-top: 20px;
+.secondary-action {
+  width: 100%;
+  font-size: 1rem; /* Größe angepasst an den anderen Button */
+  padding: 14px;   /* Padding erhöht, damit er genauso hoch ist */
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  background-color: var(--color-primary); /* JETZT BLAU */
+  color: white;    /* Weiße Schrift */
+  border-radius: 8px;
+  transition: background-color 0.2s;
 }
+
+.secondary-action:hover {
+  background-color: var(--color-primary-dark, #0056b3); /* Dunkleres Blau beim Hover */
+}
+
+.separator { text-align: center; font-size: 0.85rem; color: #999; margin: 4px 0; }
+.error-message { color: var(--color-error); font-size: 0.85rem; margin-top: 4px; }
+
+.action-footer { text-align: center; font-size: 0.8rem; color: var(--color-text-light); margin-top: 16px; line-height: 1.4; }
+.own-job-info { text-align: center; color: #666; font-style: italic; }
+
+/* KI Styles (vom vorherigen Schritt übernommen) */
+.ai-section { background: linear-gradient(to right, #f8f9fa, #e3f2fd); padding: 24px; border-radius: 12px; border: 1px solid #d1e7dd; margin-top: 20px; }
 .ai-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
 .ai-header h3 { margin: 0; font-size: 1.2rem; font-weight: 700; color: #333; }
 .beta-badge { background: #666; color: white; font-size: 0.7rem; padding: 2px 8px; border-radius: 12px; font-weight: 600; text-transform: uppercase; }
 .ai-intro { font-size: 0.95rem; color: #555; margin-bottom: 20px; line-height: 1.5; }
-
-.ai-btn {
-  background-color: white;
-  border: 1px solid #0d6efd;
-  color: #0d6efd;
-  padding: 10px 20px;
-  border-radius: 8px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
+.ai-btn { background-color: white; border: 1px solid #0d6efd; color: #0d6efd; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
 .ai-btn:hover:not(:disabled) { background-color: #0d6efd; color: white; }
 .ai-btn:disabled { opacity: 0.6; cursor: wait; }
-
-.result-bubble {
-  background: white;
-  padding: 16px;
-  border-radius: 8px;
-  border-left: 4px solid #0d6efd;
-  font-style: italic;
-  color: #333;
-  line-height: 1.6;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-  white-space: pre-wrap; /* Wichtig für Zeilenumbrüche der KI */
-}
-.retry-link {
-  background: none;
-  border: none;
-  color: #666;
-  font-size: 0.85rem;
-  text-decoration: underline;
-  cursor: pointer;
-  margin-top: 12px;
-  display: block;
-}
+.result-bubble { background: white; padding: 16px; border-radius: 8px; border-left: 4px solid #0d6efd; font-style: italic; color: #333; line-height: 1.6; box-shadow: 0 2px 8px rgba(0,0,0,0.05); white-space: pre-wrap; }
+.retry-link { background: none; border: none; color: #666; font-size: 0.85rem; text-decoration: underline; cursor: pointer; margin-top: 12px; display: block; }
 .retry-link:hover { color: #333; }
 </style>
