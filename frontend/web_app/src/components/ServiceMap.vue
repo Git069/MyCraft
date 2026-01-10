@@ -103,9 +103,11 @@ const validServices = computed(() => {
   border-radius: 16px;
   overflow: hidden;
   margin-bottom: 2rem;
-  z-index: 1;
+  position: relative;
+  z-index: 0;
   border: 1px solid var(--color-border);
 }
+
 .popup-content {
   text-align: center;
   font-size: 0.9rem;

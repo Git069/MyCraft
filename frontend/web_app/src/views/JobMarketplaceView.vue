@@ -20,7 +20,10 @@ const fetchJobs = async () => {
       search: route.query.search,
       city: route.query.city,
       // WICHTIG: 'trade' muss hier auch ausgelesen werden, sonst filtert das Backend nicht!
-      trade: route.query.trade
+      trade: route.query.trade,
+      radius: route.query.radius,
+      lat: route.query.lat,  // Falls über "In meiner Nähe" gesucht wurde
+      lng: route.query.lng   // Falls über "In meiner Nähe" gesucht wurde
     };
 
     // Bereinigen von undefined Werten
@@ -75,7 +78,15 @@ watch(() => route.query, fetchJobs);
 
 <style scoped>
 /* Deine Styles bleiben unverändert */
-.market-header { padding: var(--spacing-md) 0; margin-bottom: var(--spacing-xl); border-bottom: 1px solid var(--color-border); }
+.market-header {
+  padding: var(--spacing-md) 0;
+  margin-bottom: var(--spacing-xl);
+  border-bottom: 1px solid var(--color-border);
+
+  /* NEU HINZUFÜGEN: Hebt den Header samt Dropdown über den Rest */
+  position: relative;
+  z-index: 100;
+}
 .compact-search-wrapper { max-width: 500px; margin: 0 auto; transform: scale(0.85); transform-origin: center; }
 .jobs-grid {
   display: grid;

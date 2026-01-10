@@ -27,7 +27,7 @@ class Job(models.Model):
     
     # --- NEW & UPDATED GEO FIELDS ---
     address = models.CharField(max_length=255, blank=True)
-    location = gis_models.PointField(null=True, blank=True)
+    location = gis_models.PointField(geography=True, null=True, blank=True)
     
     # Old location fields are now deprecated but kept for now to avoid breaking old code
     zip_code = models.CharField(max_length=5, blank=True)
@@ -48,18 +48,27 @@ class Job(models.Model):
     def __str__(self):
         return f"{self.title} ({self.get_status_display()})"
 
-
     def save(self, *args, **kwargs):
+        # Nur geocoden, wenn Location fehlt UND Adressdaten da sind
+        # WICHTIG: Wir prüfen auch, ob sich die Adresse geändert hat (optional für später)
         if not self.location and (self.address or (self.city and self.zip_code)):
             try:
-                geolocator = Nominatim(user_agent="mycraft_app_backend")
-                # Baue Adresse: "Musterstraße 1, 12345 Musterstadt"
-                query = f"{self.address}, {self.zip_code} {self.city}" if self.address else f"{self.zip_code} {self.city}"
-                loc = geolocator.geocode(query)
+                # User Agent sollte einzigartig für dein Projekt sein
+                geolocator = Nominatim(user_agent="mycraft_backend_app_prod")
+
+                query = f"{self.address}, {self.zip_code} {self.city}"
+
+                # Timeout erhöhen, da Nominatim manchmal langsam ist
+                loc = geolocator.geocode(query, timeout=10)
+
                 if loc:
                     self.location = Point(loc.longitude, loc.latitude)
+                else:
+                    print(f"GEOCODING WARNING: Keine Koordinaten gefunden für '{query}'")
             except Exception as e:
-                print(f"Geocoding Error: {e}")
+                # Hier könnte man auch logging.error() nutzen
+                print(f"GEOCODING ERROR: {e}")
+
         super().save(*args, **kwargs)
 
 class Booking(models.Model):

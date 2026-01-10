@@ -16,13 +16,23 @@ class JobSerializer(serializers.ModelSerializer):
                             'location')  # location ist read-only, wird via lat/lng gesetzt
 
     def create(self, validated_data):
-        # Koordinaten aus den Daten holen (und entfernen, da sie nicht im Model existieren)
+        # 1. Koordinaten aus den Daten holen (und entfernen, da sie nicht im Model existieren)
         lat = validated_data.pop('lat', None)
         lng = validated_data.pop('lng', None)
 
-        # Wenn Koordinaten gesendet wurden, erstellen wir den Punkt
+        # 2. Wenn Koordinaten gesendet wurden, erstellen wir den Punkt
         if lat is not None and lng is not None:
             validated_data['location'] = Point(float(lng), float(lat), srid=4326)
+
+        # 3. FIX: Contractor sicher zuweisen
+        # Falls er nicht durch perform_create übergeben wurde, holen wir ihn aus dem Request-Kontext
+        if 'contractor' not in validated_data:
+            request = self.context.get('request')
+            if request and hasattr(request, 'user'):
+                validated_data['contractor'] = request.user
+            else:
+                # Fallback / Error Handling, falls kein User da ist (sollte durch Permissions nicht passieren)
+                raise serializers.ValidationError("Benutzer muss eingeloggt sein.")
 
         return super().create(validated_data)
 

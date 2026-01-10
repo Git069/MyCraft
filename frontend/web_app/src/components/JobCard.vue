@@ -122,7 +122,8 @@ const displayTitle = computed(() => {
 
 <style scoped>
 /* Deine Styles bleiben unverändert */
-.job-card { cursor: pointer; display: flex; flex-direction: column; background-color: white; border-radius: 16px; overflow: hidden; border: 1px solid transparent; transition: box-shadow 0.2s; }
+.job-card { cursor: pointer; display: flex; flex-direction: column; background-color: white; border-radius: 16px; overflow: hidden; border: 1px solid transparent; transition: box-shadow 0.2s; position: relative;
+  z-index: 0;}
 .job-card:has(.card-footer-actions) { border-color: var(--color-border); }
 .job-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
 .image-container { position: relative; aspect-ratio: 1 / 1; border-radius: 16px; overflow: hidden; background-color: #f0f0f0; }

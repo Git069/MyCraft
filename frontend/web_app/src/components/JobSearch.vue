@@ -1,129 +1,82 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue'; // onMounted und watch hinzufügen
-import { useRouter, useRoute } from 'vue-router'; // useRoute hinzufügen
+import { ref, onMounted, watch, computed } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 
 const props = defineProps({
-  enableRouting: {
-    type: Boolean,
-    default: true
-  }
+  enableRouting: { type: Boolean, default: true }
 });
 
-// Event definieren, um Filter an HomeView zu senden
 const emit = defineEmits(['search-triggered']);
-
 const router = useRouter();
-const route = useRoute(); // Route Hook holen
-const searchTerm = ref(route.query.search || '');
-const location = ref(route.query.city || '');
-const activeField = ref(null);
+const route = useRoute();
 
-const getInitialSearchTerm = () => {
-  // 1. Priorität: Expliziter Suchtext in der URL
-  if (route.query.search) return route.query.search;
+// --- STATE ---
+const searchTerm = ref('');
+const location = ref('');
+const searchRadius = ref(20); // Standard: 20km
+const activeField = ref(null); // 'search', 'location', oder 'radius'
 
-  // 2. Priorität: Wenn nach Gewerk gefiltert wurde, zeigen wir den Namen an
-  if (route.query.trade) {
-    // categories ist weiter unten definiert, wir greifen hier aber darauf zu.
-    // Da 'categories' const ist, müssen wir sicherstellen, dass es vor diesem Aufruf existiert
-    // oder die Zuweisung nach der Definition machen.
-    // Lösung: Wir setzen den Wert erst in onMounted oder nach der Definition der Categories.
-    return '';
-  }
-  return '';
-};
-
-// --- DATA: Smart Suggestions ---
+// --- DATA ---
 const categories = [
-  {
-    id: 'PAINTER',
-    title: 'Maler & Lackierer',
-    desc: 'Für Wände, Fassaden & Lackierarbeiten',
-    icon: '🎨'
-  },
-  {
-    id: 'ELECTRICIAN',
-    title: 'Elektriker',
-    desc: 'Für Installationen, Reparaturen & Smart Home',
-    icon: '⚡'
-  },
-  {
-    id: 'PLUMBER',
-    title: 'Sanitär & Heizung',
-    desc: 'Rohrreinigung, Bad-Sanierung & Heizungswartung',
-    icon: '💧'
-  },
-  {
-    id: 'CARPENTER',
-    title: 'Tischler',
-    desc: 'Möbelbau, Fenster & Türen',
-    icon: '🪚'
-  }
+  { id: 'PAINTER', title: 'Maler & Lackierer', desc: 'Wände & Fassaden', icon: '🎨' },
+  { id: 'ELECTRICIAN', title: 'Elektriker', desc: 'Installation & Reparatur', icon: '⚡' },
+  { id: 'PLUMBER', title: 'Sanitär & Heizung', desc: 'Bad & Wasser', icon: '💧' },
+  { id: 'CARPENTER', title: 'Tischler', desc: 'Möbel & Holz', icon: '🪚' }
 ];
 
 const locations = [
-  {
-    id: 'current',
-    title: 'Standort verwenden',
-    desc: 'Aufträge in deiner direkten Umgebung finden',
-    icon: '📍',
-    isAction: true
-  },
-  {
-    id: 'berlin',
-    title: 'Berlin',
-    desc: 'Beliebte Region',
-    icon: '🏙️'
-  },
-  {
-    id: 'hamburg',
-    title: 'Hamburg',
-    desc: 'Beliebte Region',
-    icon: '⚓'
-  },
-  {
-    id: 'munich',
-    title: 'München',
-    desc: 'Beliebte Region',
-    icon: '🥨'
-  }
+  { id: 'current', title: 'Standort verwenden', desc: 'GPS nutzen', icon: '📍', isAction: true },
+  { id: 'berlin', title: 'Berlin', desc: 'Region', icon: '🏙️' },
+  { id: 'hamburg', title: 'Hamburg', desc: 'Region', icon: '⚓' },
+  { id: 'munich', title: 'München', desc: 'Region', icon: '🥨' }
 ];
-
 
 // --- ACTIONS ---
 
-const executeSearch = (payload) => {
-  // Payload enthält z.B. { search: '...', city: '...', trade: '...' }
+const executeSearch = (payloadOverride = {}) => {
+  // 1. Wir nehmen die aktuellen Werte aus den Eingabefeldern als Basis
+  const baseParams = {
+    search: searchTerm.value,
+    city: location.value,
+    radius: searchRadius.value // <--- Hier wird der Radius immer mitgenommen!
+  };
 
+  // 2. Wir überschreiben sie mit eventuellen Parametern (z.B. Trade beim Klick auf ein Icon)
+  // Wichtig: payloadOverride kommt NACH baseParams
+  const finalParams = {
+    ...baseParams,
+    ...payloadOverride
+  };
+
+  // 3. Leere Werte entfernen (Aufräumen)
+  Object.keys(finalParams).forEach(key => {
+    if (finalParams[key] === undefined || finalParams[key] === '' || finalParams[key] === null) {
+      delete finalParams[key];
+    }
+  });
+
+  // 4. Routing oder Event auslösen
   if (props.enableRouting) {
-    // Standardverhalten: Weiterleitung zum Marktplatz
     router.push({
       name: 'JobMarketplace',
-      query: payload
+      query: finalParams
     });
   } else {
-    // Inline Verhalten: Event an Parent senden (z.B. HomeView)
-    emit('search-triggered', payload);
+    emit('search-triggered', finalParams);
   }
 
-  activeField.value = null; // Dropdown schließen
+  activeField.value = null;
 };
 
 const handleSearch = () => {
-  activeField.value = null; // Close dropdown
-  router.push({
-    name: 'JobMarketplace',
-    query: {
-      search: searchTerm.value,
-      city: location.value
-    }
-  });
+  executeSearch();
 };
 
 const onFocus = (field) => {
   activeField.value = field;
 };
 
+// Verzögertes Schließen, damit Klicks im Dropdown noch registriert werden
 const onBlur = () => {
   setTimeout(() => {
     activeField.value = null;
@@ -131,67 +84,47 @@ const onBlur = () => {
 };
 
 const selectCategory = (category) => {
-  // Wenn eine Kategorie geklickt wird
-  // Optional: Den Text ins Feld setzen, damit der User sieht was passiert
   searchTerm.value = category.title;
-
-  // WICHTIG: Wir senden die ID (z.B. PAINTER) als 'trade' Filter
-  executeSearch({
-    trade: category.id,
-    search: '' // Wenn man Kategorie wählt, leeren wir oft die Textsuche oder kombinieren sie
-  });
+  // Wir suchen direkt mit dem Trade-Filter
+  executeSearch({ trade: category.id, search: '' });
 };
 
 const selectLocation = (loc) => {
   if (loc.isAction) {
     location.value = "Mein Standort";
+    // Hier könnte man theoretisch sofort Geolocation abfragen
   } else {
     location.value = loc.title;
   }
-  activeField.value = null;
+  // Nach Location-Wahl springen wir (optional) direkt zum Radius oder schließen
+  activeField.value = 'radius';
 };
 
+// Initialisierung aus URL
 onMounted(() => {
-  // Falls wir eine "Trade"-Suche ohne Text haben (z.B. Klick auf Icon auf der HomeView),
-  // füllen wir das Suchfeld mit dem passenden Titel (z.B. "Maler & Lackierer")
-  if (!searchTerm.value && route.query.trade) {
-    const category = categories.find(c => c.id === route.query.trade);
-    if (category) {
-      searchTerm.value = category.title;
-    }
-  }
+  if (route.query.search) searchTerm.value = route.query.search;
+  if (route.query.city) location.value = route.query.city;
+  if (route.query.radius) searchRadius.value = parseInt(route.query.radius);
 
-  // Falls Location in URL ist, aber noch nicht im State
-  if (!location.value && route.query.city) {
-    location.value = route.query.city;
+  if (!searchTerm.value && route.query.trade) {
+    const cat = categories.find(c => c.id === route.query.trade);
+    if (cat) searchTerm.value = cat.title;
   }
 });
 
-// --- OPTIONAL: Auch auf Browser-Zurück-Button reagieren ---
 watch(() => route.query, (newQuery) => {
-  // Wenn sich die URL ändert (z.B. User drückt "Zurück"), Inputs aktualisieren
   if (newQuery.search !== undefined) searchTerm.value = newQuery.search;
   if (newQuery.city !== undefined) location.value = newQuery.city;
-
-  // Spezialfall: Trade ändert sich, aber Search ist leer
-  if (!newQuery.search && newQuery.trade) {
-     const category = categories.find(c => c.id === newQuery.trade);
-     if (category) searchTerm.value = category.title;
-  }
+  if (newQuery.radius) searchRadius.value = parseInt(newQuery.radius);
 });
 </script>
 
 <template>
   <div class="search-container-wrapper">
-    <!-- Main Search Bar -->
     <div class="search-bar-container" :class="{ 'active': activeField !== null }">
       <form @submit.prevent="handleSearch" class="search-bar">
 
-        <!-- Input Group 1: Search Term -->
-        <div
-          class="search-input-group"
-          :class="{ 'focused': activeField === 'search' }"
-        >
+        <div class="search-input-group flex-grow-2" :class="{ 'focused': activeField === 'search' }">
           <label for="search">Was suchst du?</label>
           <input
             id="search"
@@ -204,13 +137,9 @@ watch(() => route.query, (newQuery) => {
           />
         </div>
 
-        <div class="divider" v-show="activeField === null"></div>
+        <div class="divider"></div>
 
-        <!-- Input Group 2: Location -->
-        <div
-          class="search-input-group"
-          :class="{ 'focused': activeField === 'location' }"
-        >
+        <div class="search-input-group flex-grow-1" :class="{ 'focused': activeField === 'location' }">
           <label for="location">Wo?</label>
           <input
             id="location"
@@ -223,31 +152,40 @@ watch(() => route.query, (newQuery) => {
           />
         </div>
 
-        <!-- Search Button -->
+        <div class="divider"></div>
+
+        <div
+          class="search-input-group flex-grow-0 radius-group"
+          :class="{ 'focused': activeField === 'radius' }"
+          @click="onFocus('radius')"
+        >
+          <label>Umkreis</label>
+          <div class="radius-display-value">
+            {{ searchRadius }} km
+          </div>
+          <input
+            class="hidden-input"
+            @focus="onFocus('radius')"
+            @blur="onBlur"
+            readonly
+          />
+        </div>
+
         <div class="button-wrapper">
           <button type="submit" class="search-button">
             <span class="search-icon">
-              <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="presentation" focusable="false" style="display: block; fill: none; height: 16px; width: 16px; stroke: currentcolor; stroke-width: 4; overflow: visible;"><g fill="none"><path d="m13 24c6.0751322 0 11-4.9248678 11-11 0-6.07513225-4.9248678-11-11-11-6.07513225 0-11 4.92486775-11 11 0 6.0751322 4.92486775 11 11 11zm8-3 9 9"></path></g></svg>
+              <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" style="display: block; fill: none; height: 16px; width: 16px; stroke: currentcolor; stroke-width: 4; overflow: visible;"><g fill="none"><path d="m13 24c6.0751322 0 11-4.9248678 11-11 0-6.07513225-4.9248678-11-11-11-6.07513225 0-11 4.92486775-11 11 0 6.0751322 4.92486775 11 11 11zm8-3 9 9"></path></g></svg>
             </span>
-            <span class="search-text">Suchen</span>
           </button>
         </div>
 
       </form>
     </div>
 
-    <!-- SMART SUGGESTION DROPDOWN -->
     <div v-if="activeField === 'search'" class="suggestion-dropdown">
       <div class="suggestion-header">Beliebte Gewerke</div>
-      <div
-        v-for="cat in categories"
-        :key="cat.id"
-        class="suggestion-item"
-        @mousedown.prevent="selectCategory(cat)"
-      >
-        <div class="icon-box">
-          <span class="icon">{{ cat.icon }}</span>
-        </div>
+      <div v-for="cat in categories" :key="cat.id" class="suggestion-item" @mousedown.prevent="selectCategory(cat)">
+        <div class="icon-box"><span class="icon">{{ cat.icon }}</span></div>
         <div class="text-group">
           <span class="item-title">{{ cat.title }}</span>
           <span class="item-desc">{{ cat.desc }}</span>
@@ -256,19 +194,35 @@ watch(() => route.query, (newQuery) => {
     </div>
 
     <div v-if="activeField === 'location'" class="suggestion-dropdown">
-      <div class="suggestion-header">Vorschläge für dich</div>
-      <div
-        v-for="loc in locations"
-        :key="loc.id"
-        class="suggestion-item"
-        @mousedown.prevent="selectLocation(loc)"
-      >
-        <div class="icon-box">
-          <span class="icon">{{ loc.icon }}</span>
-        </div>
+      <div class="suggestion-header">Vorschläge</div>
+      <div v-for="loc in locations" :key="loc.id" class="suggestion-item" @mousedown.prevent="selectLocation(loc)">
+        <div class="icon-box"><span class="icon">{{ loc.icon }}</span></div>
         <div class="text-group">
           <span class="item-title">{{ loc.title }}</span>
           <span class="item-desc">{{ loc.desc }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="activeField === 'radius'" class="suggestion-dropdown radius-dropdown">
+      <div class="radius-content" @mousedown.prevent>
+        <div class="suggestion-header">Suchradius festlegen</div>
+        <div class="radius-control">
+            <span class="val-label">{{ searchRadius }} km</span>
+            <input
+              type="range"
+              v-model.number="searchRadius"
+              min="5"
+              max="200"
+              step="5"
+              class="range-slider"
+            />
+        </div>
+        <div class="radius-presets">
+            <button @click="searchRadius=10" :class="{active: searchRadius===10}">10km</button>
+            <button @click="searchRadius=20" :class="{active: searchRadius===20}">20km</button>
+            <button @click="searchRadius=50" :class="{active: searchRadius===50}">50km</button>
+            <button @click="searchRadius=100" :class="{active: searchRadius===100}">100km</button>
         </div>
       </div>
     </div>
@@ -284,7 +238,6 @@ watch(() => route.query, (newQuery) => {
   max-width: 850px;
 }
 
-/* --- MAIN SEARCH BAR --- */
 .search-bar-container {
   background: white;
   border-radius: 40px;
@@ -292,12 +245,8 @@ watch(() => route.query, (newQuery) => {
   border: 1px solid #dddddd;
   width: 100%;
   transition: background-color 0.2s ease;
-  background-color: white;
 }
-
-.search-bar-container.active {
-  background-color: #ebebeb;
-}
+.search-bar-container.active { background-color: #ebebeb; }
 
 .search-bar {
   display: flex;
@@ -307,55 +256,62 @@ watch(() => route.query, (newQuery) => {
   border-radius: 40px;
 }
 
+/* Flex-Verteilung der Felder */
 .search-input-group {
-  flex: 1;
-  padding: 14px 32px;
+  height: 100%;
+  padding: 14px 24px;
   position: relative;
-  cursor: text;
+  cursor: pointer;
   border-radius: 40px;
-  border: none;
-  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
-
-.search-input-group:hover {
-  background-color: #ebebeb;
-}
-
+.search-input-group:hover { background-color: rgba(0,0,0,0.05); }
 .search-input-group.focused {
   background-color: white !important;
   box-shadow: 0 6px 20px rgba(0,0,0,0.2);
   z-index: 10;
 }
 
+.flex-grow-2 { flex: 2; } /* Suche bekommt am meisten Platz */
+.flex-grow-1 { flex: 1.5; } /* Ort */
+.flex-grow-0 { flex: 0.8; min-width: 120px; } /* Radius ist kompakt */
+
 .search-input-group label {
-  display: block;
   font-size: 0.75rem;
   font-weight: 800;
   letter-spacing: 0.04em;
-  margin-bottom: 4px;
   color: var(--color-text);
-  pointer-events: none;
-  text-align: left; /* Ensure label is left-aligned */
+  margin-bottom: 2px;
+  text-align: left;
 }
 
 .search-input-group input {
   border: none !important;
-  outline: none !important;
   background: transparent !important;
-  box-shadow: none !important;
   padding: 0;
   margin: 0;
   font-size: 0.95rem;
-  width: 100%;
   color: #222;
   font-weight: 500;
+  width: 100%;
   text-overflow: ellipsis;
-  text-align: left; /* Ensure input text is left-aligned */
 }
+.search-input-group input:focus { outline: none; box-shadow: none; }
 
-.search-input-group input::placeholder {
-  color: #717171;
-  font-weight: 400;
+.radius-display-value {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #222;
+  text-align: left;
+  white-space: nowrap;
+}
+.hidden-input {
+  position: absolute;
+  opacity: 0;
+  top: 0; left: 0; width: 100%; height: 100%;
+  cursor: pointer;
 }
 
 .divider {
@@ -365,38 +321,26 @@ watch(() => route.query, (newQuery) => {
   flex-shrink: 0;
 }
 
-.button-wrapper {
-  padding: 8px;
-  padding-left: 0;
-  z-index: 11;
-}
+.button-wrapper { padding: 8px; padding-left: 0; z-index: 11; }
 
 .search-button {
   background: linear-gradient(to right, var(--color-primary) 0%, var(--color-primary-dark) 100%);
   color: white;
   border: none;
-  border-radius: 24px;
+  border-radius: 50%;
+  width: 48px;
   height: 48px;
-  padding: 0 16px;
-  font-size: 1rem;
-  font-weight: 700;
-  cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  cursor: pointer;
   transition: transform 0.1s ease, filter 0.2s ease;
   margin-right: 8px;
 }
+.search-button:hover { filter: brightness(1.1); transform: scale(1.05); }
+.search-button:active { transform: scale(0.95); }
 
-.search-button:hover {
-  filter: brightness(1.1);
-}
-
-.search-button:active {
-  transform: scale(0.96);
-}
-
-/* --- SMART SUGGESTION DROPDOWN --- */
+/* --- DROPDOWNS --- */
 .suggestion-dropdown {
   position: absolute;
   top: 100%;
@@ -407,120 +351,84 @@ watch(() => route.query, (newQuery) => {
   border-radius: 32px;
   box-shadow: 0 6px 20px rgba(0,0,0,0.15);
   padding: 24px 0;
-
-  /* ÄNDERUNG: Z-Index drastisch erhöht (von 20 auf 2000),
-     damit es sicher über der Leaflet-Karte liegt */
   z-index: 2000;
-
-  animation: fadeIn 0.2s ease-out;
   text-align: left;
 }
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
 .suggestion-header {
   padding: 0 32px 12px 32px;
   font-size: 0.8rem;
   font-weight: 700;
   color: var(--color-text-light);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  text-align: left; /* Explicitly left-align header */
 }
-
 .suggestion-item {
   display: flex;
-  align-items: center; /* Vertically center icon and text block */
+  align-items: center;
   padding: 12px 32px;
   cursor: pointer;
-  transition: background-color 0.1s ease;
-  gap: 16px; /* CRITICAL: Use gap instead of margin for consistent spacing */
+  gap: 16px;
 }
-
-.suggestion-item:hover {
-  background-color: #f7f7f7;
-}
-
+.suggestion-item:hover { background-color: #f7f7f7; }
 .icon-box {
-  width: 48px;
-  height: 48px;
-  background-color: #f1f1f1;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  /* Removed margin-right, handled by gap in parent */
+  width: 48px; height: 48px; background-color: #f1f1f1; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
 }
+.icon { font-size: 1.5rem; }
+.text-group { display: flex; flex-direction: column; }
+.item-title { font-weight: 600; font-size: 1rem; }
+.item-desc { font-size: 0.85rem; color: var(--color-text-light); }
 
-.icon {
-  font-size: 1.5rem;
+/* --- RADIUS STYLES --- */
+.radius-content { padding: 0 32px; }
+.radius-control {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 24px;
 }
-
-.text-group {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start; /* CRITICAL: Align text items to the start (left) */
-  justify-content: center; /* Center text block vertically relative to icon */
+.val-label {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--color-primary);
+    margin-bottom: 12px;
 }
-
-.item-title {
-  font-weight: 600;
-  color: var(--color-text);
-  font-size: 1rem;
-  margin-bottom: 2px;
-  text-align: left; /* Explicitly left-align title */
+.range-slider {
+    width: 100%;
+    height: 6px;
+    background: #ddd;
+    border-radius: 5px;
+    outline: none;
+    accent-color: var(--color-primary);
 }
-
-.item-desc {
-  font-size: 0.85rem;
-  color: var(--color-text-light);
-  text-align: left; /* Explicitly left-align description */
+.radius-presets {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+}
+.radius-presets button {
+    flex: 1;
+    padding: 8px;
+    border: 1px solid var(--color-border);
+    background: white;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+}
+.radius-presets button:hover { border-color: var(--color-text); }
+.radius-presets button.active {
+    background-color: var(--color-text);
+    color: white;
+    border-color: var(--color-text);
 }
 
 /* --- RESPONSIVE --- */
 @media (max-width: 768px) {
-  .search-bar-container {
-    border-radius: 24px;
-    background: transparent;
-    box-shadow: none;
-    border: none;
-  }
-  .search-bar-container.active {
-    background-color: transparent;
-  }
-  .search-bar {
-    flex-direction: column;
-    height: auto;
-    gap: 12px;
-  }
-  .search-input-group {
-    width: 100%;
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    padding: 16px 24px;
-  }
-  .search-input-group.focused {
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  }
+  .search-bar { flex-direction: column; height: auto; padding: 12px; gap: 8px; }
+  .search-input-group { width: 100%; padding: 12px 20px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); background-color: white; }
   .divider { display: none; }
-  .button-wrapper { width: 100%; padding: 0; }
-  .search-button { width: 100%; border-radius: 12px; justify-content: center; height: 56px; margin-right: 0; }
-
-  .suggestion-dropdown {
-    position: fixed;
-    top: 80px;
-    left: 0;
-    right: 0;
-    border-radius: 24px 24px 0 0;
-    margin-top: 0;
-    box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
-    height: calc(100vh - 80px);
-    overflow-y: auto;
-  }
+  .button-wrapper { width: 100%; margin-top: 4px; }
+  .search-button { width: 100%; border-radius: 12px; margin: 0; }
+  .suggestion-dropdown { position: fixed; top: 80px; height: calc(100vh - 80px); overflow-y: auto; border-radius: 20px 20px 0 0; }
 }
 </style>

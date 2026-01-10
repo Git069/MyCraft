@@ -93,56 +93,76 @@ class JobViewSet(viewsets.ModelViewSet):
         # --- PARAMETER HOLEN ---
         search_term = self.request.query_params.get('search')
         trade_filter = self.request.query_params.get('trade')
-        location_query = self.request.query_params.get('city')  # Frontend sendet 'city' für das Feld "Wo?"
+        location_query = self.request.query_params.get('city')
+        radius = self.request.query_params.get('radius')
+        lat = self.request.query_params.get('lat')
+        lng = self.request.query_params.get('lng')
 
-        # --- 1. GEWERK FILTER (Dropdown) ---
+        # --- 1. GEWERK FILTER ---
         if trade_filter:
             queryset = queryset.filter(trade=trade_filter)
 
-        # --- 2. INTELLIGENTE TEXTSUCHE (Was?) ---
+        # --- 2. TEXTSUCHE (Was?) ---
         if search_term:
-            # Suche in Titel und Beschreibung
             search_query = Q(title__icontains=search_term) | Q(description__icontains=search_term)
-
-            # Prüfe auch, ob der Suchbegriff einem Gewerk-Namen entspricht (z.B. "Maler" -> PAINTER)
-            matching_trades = []
-            for code, label in Job.Trade.choices:
-                if str(search_term).lower() in str(label).lower():
-                    matching_trades.append(code)
-
+            # Auch nach passendem Gewerk suchen (z.B. "Maler" im Text -> Trade PAINTER)
+            matching_trades = [code for code, label in Job.Trade.choices if
+                               str(search_term).lower() in str(label).lower()]
             if matching_trades:
                 search_query = search_query | Q(trade__in=matching_trades)
-
             queryset = queryset.filter(search_query)
 
-        # --- 3. STANDORT FILTER TEXT (Wo?) ---
-        # Sucht nach Stadtname ODER Postleitzahl
-        if location_query:
+        # --- 3. GEO & RADIUS LOGIK ---
+
+        search_point = None
+        used_radius = False  # <--- WICHTIGE VARIABLE
+
+        # Fall A: GPS Koordinaten
+        if lat and lng:
+            try:
+                search_point = Point(float(lng), float(lat), srid=4326)
+            except (ValueError, TypeError):
+                pass
+
+        # Fall B: Stadtname + Radius (Geocoding)
+        elif location_query and radius:
+            try:
+                geolocator = Nominatim(user_agent="mycraft_backend_prod")
+                # Wir suchen nur in Deutschland, um "Köln, USA" zu vermeiden
+                loc = geolocator.geocode(location_query, country_codes='de')
+                if loc:
+                    search_point = Point(loc.longitude, loc.latitude, srid=4326)
+            except Exception as e:
+                print(f"Geocoding Error: {e}")
+
+        # --- FILTER ANWENDEN ---
+
+        if search_point and radius:
+            try:
+                # WICHTIG: Radius anwenden
+                radius_km = float(radius)
+                queryset = queryset.filter(
+                    location__distance_lte=(search_point, D(km=radius_km))
+                ).annotate(
+                    distance=Distance('location', search_point)
+                ).order_by('distance')
+
+                # Wir merken uns: Wir haben geografisch gefiltert!
+                used_radius = True
+            except ValueError:
+                pass
+
+        # --- 4. ORTS-TEXT FILTER (Der kritische Teil!) ---
+
+        # Wir filtern NUR DANN nach dem Namen der Stadt ("Bonn"),
+        # wenn wir NICHT schon erfolgreich per Radius ("50km um Bonn") gesucht haben.
+        if location_query and not used_radius:
             queryset = queryset.filter(
                 Q(city__icontains=location_query) |
                 Q(zip_code__startswith=location_query)
             )
 
-        # --- 4. GEO-SEARCH (In meiner Nähe Button) ---
-        lat = self.request.query_params.get('lat')
-        lng = self.request.query_params.get('lng')
-        radius = self.request.query_params.get('radius')
-
-        if lat and lng and radius:
-            try:
-                user_location = Point(float(lng), float(lat), srid=4326)
-                queryset = queryset.filter(
-                    location__distance_lte=(user_location, D(km=float(radius)))
-                ).annotate(
-                    distance=Distance('location', user_location)
-                ).order_by('distance')
-            except (ValueError, TypeError):
-                pass
-
         return queryset
-
-    def perform_create(self, serializer):
-        serializer.save(contractor=self.request.user)
 
     @action(detail=False, methods=['get'], url_path='my-jobs')
     def my_jobs(self, request):

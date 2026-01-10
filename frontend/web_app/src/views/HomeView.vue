@@ -106,7 +106,15 @@ onMounted(() => fetchServices());
 </template>
 
 <style scoped>
-.hero-section { padding: var(--spacing-xxl) 0; background-color: var(--color-surface); border-bottom: 1px solid var(--color-border); }
+.hero-section {
+  padding: var(--spacing-xxl) 0;
+  background-color: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+
+  /* NEU: Damit das Dropdown über den darunterliegenden Karten erscheint */
+  position: relative;
+  z-index: 100;
+}
 .hero-title { font-size: 3.5rem; line-height: 1.1; margin-top: 0; margin-bottom: var(--spacing-lg); max-width: 800px; margin-left: auto; margin-right: auto; }
 .hero-subtitle { font-size: var(--font-size-lg); color: var(--color-text-light); margin-bottom: var(--spacing-xl); max-width: 650px; margin-left: auto; margin-right: auto; }
 .nearby-btn {

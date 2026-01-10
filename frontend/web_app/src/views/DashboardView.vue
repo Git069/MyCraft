@@ -158,8 +158,18 @@ const pendingOrdersCount = computed(() => {
 
 <style scoped>
 .page-wrapper { padding-top: var(--spacing-lg); padding-bottom: var(--spacing-xxl); }
-.dashboard-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: var(--spacing-xl); flex-wrap: wrap; gap: 20px; }
-.header-text h1 { margin-bottom: 4px; font-size: 2rem; }
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: var(--spacing-xl);
+  flex-wrap: wrap;
+  gap: 20px;
+
+  /* NEU: Hebt den Header-Bereich (inkl. Dropdowns) über den restlichen Inhalt */
+  position: relative;
+  z-index: 100;
+}
 .subtitle { color: var(--color-text-light); }
 .create-btn { padding: 10px 20px; font-weight: 600; text-decoration: none; display: inline-block; }
 
