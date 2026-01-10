@@ -407,9 +407,13 @@ watch(() => route.query, (newQuery) => {
   border-radius: 32px;
   box-shadow: 0 6px 20px rgba(0,0,0,0.15);
   padding: 24px 0;
-  z-index: 20;
+
+  /* ÄNDERUNG: Z-Index drastisch erhöht (von 20 auf 2000),
+     damit es sicher über der Leaflet-Karte liegt */
+  z-index: 2000;
+
   animation: fadeIn 0.2s ease-out;
-  text-align: left; /* CRITICAL: Ensure all text in dropdown is left-aligned */
+  text-align: left;
 }
 
 @keyframes fadeIn {

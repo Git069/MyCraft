@@ -137,13 +137,19 @@ onUnmounted(() => {
 
 <style scoped>
 /* Styles remain largely the same, removed old avatar styles */
+
+header, nav, .navbar { /* Passe den Selektor an deine Klasse an, oft 'app-header' oder ähnlich */
+  position: relative; /* Oder sticky/fixed */
+  z-index: 3000; /* Muss höher sein als Dropdowns (2000) und Karte */
+}
+
 .main-header {
   height: 80px;
   background-color: white;
   border-bottom: 1px solid #ebebeb;
   position: sticky;
   top: 0;
-  z-index: 100;
+  z-index: 3000;
 }
 .nav-container {
   height: 100%;
