@@ -1,17 +1,21 @@
 <script setup>
+// --- Imports ---
 import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '@/api';
 
+// --- Setup ---
 const router = useRouter();
+
+// --- State ---
 const isLoading = ref(false);
 const errorMessage = ref('');
 
-// --- Wizard State ---
+// Wizard State
 const currentStep = ref(1);
 const totalSteps = 4;
 
-// --- Form Data ---
+// Form Data
 const jobData = ref({
   trade: '',
   title: '',
@@ -20,17 +24,16 @@ const jobData = ref({
   zip_code: '',
   city: '',
   price: null,
-  // NEU: Koordinaten Felder (werden nicht angezeigt, aber gesendet)
   lat: null,
   lng: null
 });
 
-// --- Adress-Vorschläge State (Neu) ---
+// Address Suggestions State
 const addressSuggestions = ref([]);
 const showSuggestions = ref(false);
 let debounceTimeout = null;
 
-// --- Options ---
+// Options
 const tradeOptions = [
   { value: 'PLUMBER', text: 'Sanitär & Heizung', icon: '💧' },
   { value: 'ELECTRICIAN', text: 'Elektrik', icon: '⚡' },
@@ -41,10 +44,17 @@ const tradeOptions = [
 ];
 
 // --- Computed Properties ---
+
+/**
+ * Calculates the progress percentage of the wizard.
+ */
 const progressPercentage = computed(() => {
   return (currentStep.value / totalSteps) * 100;
 });
 
+/**
+ * Validates the current step to enable/disable the "Next" button.
+ */
 const isStepValid = computed(() => {
   switch (currentStep.value) {
     case 1: // Trade
@@ -52,7 +62,6 @@ const isStepValid = computed(() => {
     case 2: // Details
       return jobData.value.title.length > 5 && jobData.value.description.length > 10;
     case 3: // Location
-      // Validierung: PLZ und Stadt müssen vorhanden sein (manuell oder durch Suche)
       return jobData.value.zip_code.length >= 4 && !!jobData.value.city;
     case 4: // Price
       return true;
@@ -61,19 +70,20 @@ const isStepValid = computed(() => {
   }
 });
 
-// --- Adress-Logik (Neu) ---
+// --- Methods ---
+
+/**
+ * Handles address input changes with debouncing to fetch suggestions.
+ */
 const onAddressInput = () => {
-  // Timeout zurücksetzen
   if (debounceTimeout) clearTimeout(debounceTimeout);
 
-  // Erst ab 3 Zeichen suchen
   if (jobData.value.address.length < 3) {
     addressSuggestions.value = [];
     showSuggestions.value = false;
     return;
   }
 
-  // API erst nach kurzer Tipp-Pause abfragen (Debounce)
   debounceTimeout = setTimeout(async () => {
     try {
       const response = await api.suggestAddresses(jobData.value.address);
@@ -85,6 +95,10 @@ const onAddressInput = () => {
   }, 400);
 };
 
+/**
+ * Selects an address from the suggestions list and populates form fields.
+ * @param {Object} suggestion - The selected address suggestion.
+ */
 const selectAddress = (suggestion) => {
   const street = suggestion.road || '';
   const number = suggestion.house_number || '';
@@ -93,8 +107,6 @@ const selectAddress = (suggestion) => {
   jobData.value.zip_code = suggestion.zip_code || '';
   jobData.value.city = suggestion.city || '';
 
-  // NEU: Koordinaten aus dem Vorschlag übernehmen!
-  // Nominatim liefert Strings, wir wandeln sie in Zahlen um
   jobData.value.lat = parseFloat(suggestion.lat);
   jobData.value.lng = parseFloat(suggestion.lng);
 
@@ -102,14 +114,18 @@ const selectAddress = (suggestion) => {
   addressSuggestions.value = [];
 };
 
+/**
+ * Handles blur event on address input to hide suggestions with a delay.
+ */
 const onBlurAddress = () => {
-  // Kurze Verzögerung, damit ein Klick auf die Liste noch registriert wird bevor sie verschwindet
   setTimeout(() => {
     showSuggestions.value = false;
   }, 100);
 };
 
-// --- Actions ---
+/**
+ * Advances to the next step in the wizard or submits the form.
+ */
 const nextStep = () => {
   if (isStepValid.value && currentStep.value < totalSteps) {
     currentStep.value++;
@@ -118,16 +134,26 @@ const nextStep = () => {
   }
 };
 
+/**
+ * Goes back to the previous step in the wizard.
+ */
 const prevStep = () => {
   if (currentStep.value > 1) {
     currentStep.value--;
   }
 };
 
+/**
+ * Selects a trade option.
+ * @param {string} tradeValue - The value of the selected trade.
+ */
 const selectTrade = (tradeValue) => {
   jobData.value.trade = tradeValue;
 };
 
+/**
+ * Submits the job creation form.
+ */
 const handleSubmit = async () => {
   isLoading.value = true;
   errorMessage.value = '';
@@ -296,20 +322,26 @@ const handleSubmit = async () => {
 </template>
 
 <style scoped>
-/* Bestehende Styles */
+/* --- Layout --- */
 .wizard-container { display: flex; flex-direction: column; min-height: calc(100vh - 80px); background-color: white; }
 .progress-bar-container { height: 4px; background-color: #f0f0f0; width: 100%; }
 .progress-bar-fill { height: 100%; background-color: var(--color-primary); transition: width 0.3s ease; }
 .wizard-content { flex-grow: 1; max-width: 600px; width: 100%; margin: 0 auto; padding: 40px 24px 100px; }
+
+/* --- Header --- */
 .step-header { margin-bottom: 32px; }
 .step-indicator { font-size: 0.9rem; font-weight: 600; color: var(--color-text-light); text-transform: uppercase; letter-spacing: 0.05em; }
 .step-header h1 { font-size: 2rem; margin-top: 8px; color: var(--color-text); }
+
+/* --- Trade Selection --- */
 .trade-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; }
 .trade-card { border: 2px solid var(--color-border); border-radius: 12px; padding: 24px; cursor: pointer; transition: all 0.2s ease; display: flex; flex-direction: column; align-items: center; text-align: center; }
 .trade-card:hover { border-color: var(--color-text-light); }
 .trade-card.selected { border-color: var(--color-primary); background-color: #f0f4ff; box-shadow: 0 0 0 1px var(--color-primary); }
 .trade-icon { font-size: 2.5rem; margin-bottom: 12px; }
 .trade-label { font-weight: 600; font-size: 0.95rem; }
+
+/* --- Forms --- */
 .form-group { margin-bottom: 24px; }
 .form-group label { display: block; font-weight: 600; margin-bottom: 8px; color: var(--color-text); }
 input, textarea { width: 100%; padding: 16px; font-size: 1.1rem; border: 1px solid var(--color-border); border-radius: 8px; transition: border-color 0.2s; }
@@ -317,6 +349,8 @@ input:focus, textarea:focus { border-color: var(--color-text); outline: none; }
 .price-input-wrapper { position: relative; }
 .currency-symbol { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); font-weight: 600; color: var(--color-text-light); }
 .hint { font-size: 0.9rem; color: var(--color-text-light); margin-top: 8px; }
+
+/* --- Footer --- */
 .wizard-footer { position: fixed; bottom: 0; left: 0; width: 100%; background-color: white; border-top: 1px solid var(--color-border); padding: 16px 0; z-index: 10; }
 .footer-content { display: flex; justify-content: space-between; align-items: center; }
 .back-btn { background: none; border: none; font-weight: 600; text-decoration: underline; cursor: pointer; font-size: 1rem; color: var(--color-text); }
@@ -324,7 +358,7 @@ input:focus, textarea:focus { border-color: var(--color-text); outline: none; }
 .next-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .error-message { background-color: #fff0f0; color: var(--color-error); padding: 12px; border-radius: 8px; margin-bottom: 24px; text-align: center; }
 
-/* --- NEUE STYLES FÜR AUTOCOMPLETE --- */
+/* --- Autocomplete --- */
 .relative-group { position: relative; }
 
 .suggestions-dropdown {

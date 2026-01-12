@@ -1,4 +1,5 @@
 <script setup>
+// --- Imports ---
 import { ref, onMounted } from 'vue';
 import api from '@/api';
 import JobSearch from '@/components/JobSearch.vue';
@@ -6,25 +7,29 @@ import JobCard from '@/components/JobCard.vue';
 import ServiceMap from '@/components/ServiceMap.vue';
 import { useToastStore } from '@/stores/toast';
 
+// --- Setup ---
+const toastStore = useToastStore();
+
+// --- State ---
 const recentServices = ref([]);
 const loading = ref(true);
 const isLocating = ref(false);
-const toastStore = useToastStore();
-
 const defaultParams = { page_size: 8 };
 
-// Diese Funktion akzeptiert jetzt Filter-Parameter
+// --- Methods ---
+
+/**
+ * Fetches services from the API based on filter parameters.
+ * @param {Object} filterParams - Optional filter parameters.
+ */
 const fetchServices = async (filterParams = {}) => {
   loading.value = true;
   const requestParams = { ...defaultParams, ...filterParams };
 
   try {
     const response = await api.getServices(requestParams);
-
-    // FIX: Filtere alle Ergebnisse heraus, die null/undefined sind
     const results = response.data.results || [];
-    recentServices.value = results.filter(item => item && item.id); // Nur Items mit ID behalten
-
+    recentServices.value = results.filter(item => item && item.id);
   } catch (error) {
     console.error("Failed to fetch services:", error);
     toastStore.addToast("Fehler beim Laden der Angebote.", "error");
@@ -33,13 +38,9 @@ const fetchServices = async (filterParams = {}) => {
   }
 };
 
-// Handler für das Event aus der JobSearch Komponente
-const handleSearchTriggered = (filters) => {
-  // filters ist z.B. { trade: 'PAINTER', search: '' } oder { search: 'Test', city: 'Berlin' }
-  console.log("Filtering Home View with:", filters);
-  fetchServices(filters);
-};
-
+/**
+ * Finds services nearby using the browser's geolocation API.
+ */
 const findNearby = () => {
   if (!navigator.geolocation) {
     toastStore.addToast("Geolokalisierung wird von deinem Browser nicht unterstützt.", "error");
@@ -65,6 +66,7 @@ const findNearby = () => {
   );
 };
 
+// --- Lifecycle Hooks ---
 onMounted(() => fetchServices());
 </script>
 
@@ -93,7 +95,6 @@ onMounted(() => fetchServices());
           <p>Keine Angebote für deine Suche gefunden.</p>
         </div>
         <div v-else class="jobs-grid">
-          <!-- FIX: Pass 'service' prop instead of 'job' -->
           <JobCard
             v-for="service in recentServices"
             :key="service.id"
@@ -110,8 +111,6 @@ onMounted(() => fetchServices());
   padding: var(--spacing-xxl) 0;
   background-color: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
-
-  /* NEU: Damit das Dropdown über den darunterliegenden Karten erscheint */
   position: relative;
   z-index: 100;
 }
@@ -137,16 +136,11 @@ onMounted(() => fetchServices());
 .jobs-grid {
   display: grid;
   gap: 24px;
-  /* Mobile First: Flexibles Layout für Handys und kleine Tablets.
-     Hier nutzen wir auto-fill, damit es auf kleinen Screens automatisch umbricht. */
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
 }
 
 @media (min-width: 1024px) {
   .jobs-grid {
-    /* repeat(3, 1fr) bedeutet: Teile die Breite IMMER durch 3.
-       Egal ob du 1, 2 oder 10 Ergebnisse hast.
-       Eine einzelne Karte ist damit exakt so breit wie eine Karte in einer vollen Reihe. */
     grid-template-columns: repeat(3, 1fr);
   }
 }

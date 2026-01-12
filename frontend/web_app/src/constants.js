@@ -6,3 +6,27 @@ export const TRADE_IMAGES = {
   GARDENER: 'https://images.unsplash.com/photo-1558904541-efa843a96f01?auto=format&fit=crop&w=800&q=80',
   OTHER: 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?auto=format&fit=crop&w=800&q=80'
 };
+
+export const STATUS_TRANSLATIONS = {
+  // Job Status
+  OPEN: 'Offen',
+  BOOKED: 'Gebucht',
+  COMPLETED: 'Abgeschlossen',
+  CANCELLED: 'Storniert',
+  
+  // Booking/Order Status
+  PENDING: 'Ausstehend',
+  CONFIRMED: 'Bestätigt',
+  REJECTED: 'Abgelehnt',
+  IN_PROGRESS: 'In Bearbeitung',
+  PAID: 'Bezahlt'
+};
+
+export const TRADE_TRANSLATIONS = {
+  PLUMBER: 'Klempner',
+  ELECTRICIAN: 'Elektriker',
+  PAINTER: 'Maler',
+  CARPENTER: 'Tischler',
+  GARDENER: 'Gärtner',
+  OTHER: 'Sonstiges'
+};

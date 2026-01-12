@@ -1,30 +1,27 @@
 <script setup>
+// --- Imports ---
 import { ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import api from '@/api';
 import { useToastStore } from '@/stores/toast';
 
+// --- Setup ---
 const route = useRoute();
 const router = useRouter();
 const toastStore = useToastStore();
 
+// --- State ---
 const job = ref(null);
 const loading = ref(true);
 const isSaving = ref(false);
-
 const jobId = route.params.id;
 
-onMounted(async () => {
-  try {
-    const response = await api.getJobDetails(jobId);
-    job.value = response.data;
-  } catch (error) {
-    toastStore.addToast("Auftrag konnte nicht geladen werden.", "error");
-  } finally {
-    loading.value = false;
-  }
-});
+// --- Methods ---
 
+/**
+ * Updates the job details via the API.
+ * Redirects to the dashboard upon success.
+ */
 const handleUpdate = async () => {
   isSaving.value = true;
   try {
@@ -37,6 +34,18 @@ const handleUpdate = async () => {
     isSaving.value = false;
   }
 };
+
+// --- Lifecycle Hooks ---
+onMounted(async () => {
+  try {
+    const response = await api.getJobDetails(jobId);
+    job.value = response.data;
+  } catch (error) {
+    toastStore.addToast("Auftrag konnte nicht geladen werden.", "error");
+  } finally {
+    loading.value = false;
+  }
+});
 </script>
 
 <template>

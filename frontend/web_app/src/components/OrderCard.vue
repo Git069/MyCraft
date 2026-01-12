@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue';
+import { STATUS_TRANSLATIONS } from '@/constants';
 
 const props = defineProps({
   booking: { type: Object, required: true }
@@ -24,6 +25,11 @@ const locationDisplay = computed(() => {
   if (!s) return 'Keine Ortsangabe';
   if (s.address) return s.address;
   return `${s.zip_code || ''} ${s.city || ''}`.trim() || 'Ort unbekannt';
+});
+
+const translatedStatus = computed(() => {
+  const status = props.booking.status;
+  return STATUS_TRANSLATIONS[status] || status;
 });
 </script>
 
@@ -84,7 +90,7 @@ const locationDisplay = computed(() => {
       </div>
 
       <div v-else class="status-footer" :class="booking.status.toLowerCase()">
-        Status: {{ booking.status }}
+        Status: {{ translatedStatus }}
       </div>
     </div>
   </div>

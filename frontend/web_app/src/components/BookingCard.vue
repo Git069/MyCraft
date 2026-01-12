@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth'; // Store importieren
+import { STATUS_TRANSLATIONS } from '@/constants';
 
 const props = defineProps({
   booking: { type: Object, required: true },
@@ -37,6 +38,11 @@ const formattedDate = computed(() => {
   return new Date(props.booking.created_at).toLocaleDateString('de-DE', { day: 'numeric', month: 'short' });
 });
 const displayTitle = computed(() => props.booking.service.title);
+
+const translatedStatus = computed(() => {
+  const status = props.booking.status;
+  return STATUS_TRANSLATIONS[status] || status;
+});
 </script>
 
 <template>
@@ -45,7 +51,7 @@ const displayTitle = computed(() => props.booking.service.title);
       <img :src="jobImage" :alt="displayTitle" class="job-image" />
 
       <div class="status-badge" :class="`status-${booking.status.toLowerCase()}`">
-        {{ booking.status }}
+        {{ translatedStatus }}
       </div>
     </div>
 

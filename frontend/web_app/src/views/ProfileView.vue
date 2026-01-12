@@ -1,4 +1,5 @@
 <script setup>
+// --- Imports ---
 import { ref, onMounted, computed } from 'vue';
 import { useAuthStore } from '@/stores/auth';
 import api from '@/api';
@@ -6,15 +7,27 @@ import StarRating from '@/components/StarRating.vue';
 import UserAvatar from '@/components/UserAvatar.vue';
 import EditProfileModal from '@/components/EditProfileModal.vue';
 
+// --- Setup ---
 const authStore = useAuthStore();
-const user = computed(() => authStore.currentUser);
+
+// --- State ---
 const loading = ref(true);
 const showEditModal = ref(false);
-
-// We will fetch the full user profile data, including reviews
 const fullUserProfile = ref(null);
 
-// Funktion zum Laden der Profildaten (ausgelagert für Wiederverwendung)
+// --- Computed Properties ---
+const user = computed(() => authStore.currentUser);
+
+const memberSince = computed(() => {
+  if (!fullUserProfile.value?.date_joined) return '';
+  return new Date(fullUserProfile.value.date_joined).getFullYear();
+});
+
+// --- Methods ---
+
+/**
+ * Fetches the full user profile details from the API.
+ */
 const fetchUserProfile = async () => {
   if (user.value) {
     loading.value = true;
@@ -29,26 +42,35 @@ const fetchUserProfile = async () => {
   }
 };
 
-onMounted(() => {
-  fetchUserProfile();
-});
-
-// Callback, wenn das Profil erfolgreich bearbeitet wurde
+/**
+ * Callback function to handle profile updates.
+ * Refetches the user profile to display the latest data.
+ */
 const handleProfileUpdate = () => {
-  fetchUserProfile(); // Daten neu laden, um Änderungen sofort anzuzeigen
+  fetchUserProfile();
 };
 
+/**
+ * Constructs the full URL for an image path.
+ * @param {string} url - The relative image URL.
+ * @returns {string|null} The full URL or null.
+ */
 const fullImageUrl = (url) => url ? `http://localhost:8000${url}` : null;
 
-const memberSince = computed(() => {
-  if (!fullUserProfile.value?.date_joined) return '';
-  return new Date(fullUserProfile.value.date_joined).getFullYear();
-});
-
+/**
+ * Formats a date string into a localized month and year string.
+ * @param {string} dateString - The date string to format.
+ * @returns {string} Formatted date string.
+ */
 const formatReviewDate = (dateString) => {
   const date = new Date(dateString);
   return date.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
 };
+
+// --- Lifecycle Hooks ---
+onMounted(() => {
+  fetchUserProfile();
+});
 </script>
 
 <template>

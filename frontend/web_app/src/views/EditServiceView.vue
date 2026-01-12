@@ -1,36 +1,30 @@
 <script setup>
+// --- Imports ---
 import { ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import api from '@/api';
 import { useToastStore } from '@/stores/toast';
 
+// --- Setup ---
 const route = useRoute();
 const router = useRouter();
 const toastStore = useToastStore();
 
-const service = ref(null); // Use 'service' to match the new nomenclature
+// --- State ---
+const service = ref(null);
 const loading = ref(true);
 const isSaving = ref(false);
-
 const serviceId = route.params.id;
 
-onMounted(async () => {
-  try {
-    // FIX: Use the correct API function for services
-    const response = await api.getServiceDetails(serviceId);
-    service.value = response.data;
-  } catch (error) {
-    toastStore.addToast("Inserat konnte nicht geladen werden.", "error");
-    router.push({ name: 'Dashboard' });
-  } finally {
-    loading.value = false;
-  }
-});
+// --- Methods ---
 
+/**
+ * Updates the service details via the API.
+ * Redirects to the dashboard upon success.
+ */
 const handleUpdate = async () => {
   isSaving.value = true;
   try {
-    // FIX: Use the correct API function for services
     await api.updateService(serviceId, service.value);
     toastStore.addToast("Inserat erfolgreich aktualisiert.", "success");
     router.push({ name: 'Dashboard' });
@@ -40,6 +34,19 @@ const handleUpdate = async () => {
     isSaving.value = false;
   }
 };
+
+// --- Lifecycle Hooks ---
+onMounted(async () => {
+  try {
+    const response = await api.getServiceDetails(serviceId);
+    service.value = response.data;
+  } catch (error) {
+    toastStore.addToast("Inserat konnte nicht geladen werden.", "error");
+    router.push({ name: 'Dashboard' });
+  } finally {
+    loading.value = false;
+  }
+});
 </script>
 
 <template>

@@ -1,8 +1,13 @@
-from django.db import models
 from django.contrib.auth.models import User
+from django.db import models
+
 from jobs.models import Job
 
+
 class Conversation(models.Model):
+    """
+    Represents a chat conversation between users regarding a specific job.
+    """
     job = models.ForeignKey(Job, on_delete=models.CASCADE, related_name='conversations')
     participants = models.ManyToManyField(User, related_name='conversations')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -14,12 +19,17 @@ class Conversation(models.Model):
     def __str__(self):
         return f"Conversation about '{self.job.title}'"
 
+
 class Offer(models.Model):
+    """
+    Represents a price offer made within a conversation.
+    """
     STATUS_CHOICES = (
         ('PENDING', 'Pending'),
         ('ACCEPTED', 'Accepted'),
         ('REJECTED', 'Rejected'),
     )
+
     conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name='offers')
     creator = models.ForeignKey(User, on_delete=models.CASCADE)
     price = models.DecimalField(max_digits=10, decimal_places=2)
@@ -30,13 +40,18 @@ class Offer(models.Model):
     def __str__(self):
         return f"Offer {self.id} - {self.price} ({self.status})"
 
+
 class Message(models.Model):
+    """
+    Represents a single message within a conversation.
+    Can optionally be linked to an Offer.
+    """
     conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name='messages')
     sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_messages')
-    content = models.TextField(blank=True, null=True) # Content can be empty if it's just an offer container
+    content = models.TextField(blank=True, null=True)  # Content can be empty if it's just an offer container
     timestamp = models.DateTimeField(auto_now_add=True)
     is_read = models.BooleanField(default=False)
-    
+
     # Link to an offer if this message represents one
     offer = models.OneToOneField(Offer, on_delete=models.CASCADE, null=True, blank=True, related_name='message')
 

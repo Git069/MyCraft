@@ -1,24 +1,27 @@
 <script setup>
+// --- Imports ---
 import { ref, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
-import { useToastStore } from '@/stores/toast'; // Import toast store
+import { useToastStore } from '@/stores/toast';
 
+// --- Setup ---
+const router = useRouter();
+const route = useRoute();
+const authStore = useAuthStore();
+const toastStore = useToastStore();
+
+// --- State ---
 const email = ref('');
 const password = ref('');
 const isLoading = ref(false);
 
-const router = useRouter();
-const route = useRoute();
-const authStore = useAuthStore();
-const toastStore = useToastStore(); // Use toast store
+// --- Methods ---
 
-onMounted(() => {
-  if (route.query.registered === 'true') {
-    toastStore.addToast('Registrierung erfolgreich! Bitte melde dich an.', 'success');
-  }
-});
-
+/**
+ * Handles the login process.
+ * Calls the auth store to login and redirects to the dashboard on success.
+ */
 const handleLogin = async () => {
   isLoading.value = true;
   try {
@@ -26,13 +29,20 @@ const handleLogin = async () => {
       username: email.value,
       password: password.value,
     });
-    router.push({ name: 'Dashboard' }); // Redirect to dashboard on login
+    router.push({ name: 'Dashboard' });
   } catch (error) {
     toastStore.addToast('Anmeldedaten sind ungültig. Bitte versuchen Sie es erneut.', 'error');
   } finally {
     isLoading.value = false;
   }
 };
+
+// --- Lifecycle Hooks ---
+onMounted(() => {
+  if (route.query.registered === 'true') {
+    toastStore.addToast('Registrierung erfolgreich! Bitte melde dich an.', 'success');
+  }
+});
 </script>
 
 <template>
@@ -44,7 +54,6 @@ const handleLogin = async () => {
       </header>
 
       <form @submit.prevent="handleLogin" class="login-form">
-        <!-- Error messages are now handled by the global toast container -->
         <div class="form-group">
           <label for="email">E-Mail-Adresse</label>
           <input
@@ -81,7 +90,6 @@ const handleLogin = async () => {
 </template>
 
 <style scoped>
-/* Styles are simplified as error/success messages are removed */
 .login-container {
   display: flex;
   justify-content: center;

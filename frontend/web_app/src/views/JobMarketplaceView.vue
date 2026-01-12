@@ -1,4 +1,5 @@
 <script setup>
+// --- Imports ---
 import { ref, onMounted, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import api from '@/api';
@@ -6,11 +7,20 @@ import JobSearch from '@/components/JobSearch.vue';
 import JobCard from '@/components/JobCard.vue';
 import JobCardSkeleton from '@/components/JobCardSkeleton.vue';
 
+// --- Setup ---
+const route = useRoute();
+
+// --- State ---
 const jobs = ref([]);
 const loading = ref(true);
 const error = ref(null);
-const route = useRoute();
 
+// --- Methods ---
+
+/**
+ * Fetches jobs from the API based on current route query parameters.
+ * Filters out undefined parameters and handles errors.
+ */
 const fetchJobs = async () => {
   loading.value = true;
   error.value = null;
@@ -19,18 +29,16 @@ const fetchJobs = async () => {
       status: 'OPEN',
       search: route.query.search,
       city: route.query.city,
-      // WICHTIG: 'trade' muss hier auch ausgelesen werden, sonst filtert das Backend nicht!
       trade: route.query.trade,
       radius: route.query.radius,
-      lat: route.query.lat,  // Falls über "In meiner Nähe" gesucht wurde
-      lng: route.query.lng   // Falls über "In meiner Nähe" gesucht wurde
+      lat: route.query.lat,
+      lng: route.query.lng
     };
 
-    // Bereinigen von undefined Werten
+    // Remove undefined keys
     Object.keys(params).forEach(key => params[key] === undefined && delete params[key]);
 
     const response = await api.getJobs(params);
-    // Sicherheitscheck wie auf der HomeView, falls leere Objekte kommen
     const results = response.data.results || [];
     jobs.value = results.filter(item => item && item.id);
 
@@ -42,8 +50,10 @@ const fetchJobs = async () => {
   }
 };
 
+// --- Lifecycle Hooks ---
 onMounted(fetchJobs);
-// Reagiert auf Änderungen in der URL (z.B. neuer Filter)
+
+// --- Watchers ---
 watch(() => route.query, fetchJobs);
 </script>
 
@@ -77,32 +87,37 @@ watch(() => route.query, fetchJobs);
 </template>
 
 <style scoped>
-/* Deine Styles bleiben unverändert */
 .market-header {
   padding: var(--spacing-md) 0;
   margin-bottom: var(--spacing-xl);
   border-bottom: 1px solid var(--color-border);
-
-  /* NEU HINZUFÜGEN: Hebt den Header samt Dropdown über den Rest */
   position: relative;
   z-index: 100;
 }
-.compact-search-wrapper { max-width: 500px; margin: 0 auto; transform: scale(0.85); transform-origin: center; }
+.compact-search-wrapper {
+  max-width: 500px;
+  margin: 0 auto;
+  transform: scale(0.85);
+  transform-origin: center;
+}
 .jobs-grid {
   display: grid;
   gap: 24px;
-  /* WICHTIG: Hier 'auto-fill' statt 'auto-fit' nutzen!
-     'auto-fit' kollabiert leere Spalten und streckt den Inhalt.
-     'auto-fill' behält die leeren Spalten bei -> Kein Strecken. */
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
 }
 
 @media (min-width: 1024px) {
   .jobs-grid {
-    /* Auf großen Screens erzwingen wir exakt 3 Spalten */
     grid-template-columns: repeat(3, 1fr);
   }
 }
-.empty-state { text-align: center; padding: var(--spacing-xxl) 0; }
-.error-message { text-align: center; padding: var(--spacing-lg); color: var(--color-error); }
+.empty-state {
+  text-align: center;
+  padding: var(--spacing-xxl) 0;
+}
+.error-message {
+  text-align: center;
+  padding: var(--spacing-lg);
+  color: var(--color-error);
+}
 </style>

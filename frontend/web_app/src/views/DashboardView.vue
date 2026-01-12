@@ -1,24 +1,42 @@
 <script setup>
+// --- Imports ---
 import { ref, onMounted, computed } from 'vue';
 import api from '@/api';
 import JobCard from '@/components/JobCard.vue';
-// import BookingCard entfernen wir hier nicht, falls es noch gebraucht wird,
-// aber wir brauchen jetzt OrderCard:
 import OrderCard from '@/components/OrderCard.vue';
 import { useAuthStore } from '@/stores/auth';
 import { useToastStore } from '@/stores/toast';
 
+// --- Setup ---
 const authStore = useAuthStore();
 const toast = useToastStore();
-const user = computed(() => authStore.currentUser);
 
-// Daten
+// --- State ---
 const myServices = ref([]);
 const myOrders = ref([]);
 const loading = ref(true);
-
 const activeTab = ref('services');
 
+// --- Computed Properties ---
+const user = computed(() => authStore.currentUser);
+
+const activeOrders = computed(() => {
+  return myOrders.value.filter(o => ['PENDING', 'CONFIRMED'].includes(o.status));
+});
+
+const pastOrders = computed(() => {
+  return myOrders.value.filter(o => ['COMPLETED', 'CANCELLED'].includes(o.status));
+});
+
+const pendingOrdersCount = computed(() => {
+  return myOrders.value.filter(o => o.status === 'PENDING' || o.status === 'CONFIRMED').length;
+});
+
+// --- Methods ---
+
+/**
+ * Fetches user's services and orders from the API.
+ */
 const fetchData = async () => {
   loading.value = true;
   try {
@@ -27,7 +45,7 @@ const fetchData = async () => {
       api.getMyOrders()
     ]);
 
-    // Services zuweisen (Code bleibt gleich)
+    // Assign Services
     if (Array.isArray(servicesRes.data)) {
         myServices.value = [...servicesRes.data];
     } else if (servicesRes.data && Array.isArray(servicesRes.data.results)) {
@@ -36,7 +54,7 @@ const fetchData = async () => {
         myServices.value = [];
     }
 
-    // Orders zuweisen (Code bleibt gleich)
+    // Assign Orders
     if (Array.isArray(ordersRes.data)) {
         myOrders.value = [...ordersRes.data];
     } else if (ordersRes.data && Array.isArray(ordersRes.data.results)) {
@@ -53,22 +71,10 @@ const fetchData = async () => {
   }
 };
 
-onMounted(fetchData);
-
-// Computed Properties für Orders
-const activeOrders = computed(() => {
-  return myOrders.value.filter(o => ['PENDING', 'CONFIRMED'].includes(o.status));
-});
-
-const pastOrders = computed(() => {
-  return myOrders.value.filter(o => ['COMPLETED', 'CANCELLED'].includes(o.status));
-});
-
-const pendingOrdersCount = computed(() => {
-  return myOrders.value.filter(o => o.status === 'PENDING' || o.status === 'CONFIRMED').length;
-});
-
-// Actions
+/**
+ * Marks a booking as completed.
+ * @param {number} bookingId - The ID of the booking.
+ */
 const handleMarkCompleted = async (bookingId) => {
   if (!confirm("Möchtest du diesen Auftrag wirklich als erledigt markieren?")) return;
   try {
@@ -80,6 +86,10 @@ const handleMarkCompleted = async (bookingId) => {
   }
 };
 
+/**
+ * Cancels an order.
+ * @param {number} bookingId - The ID of the booking.
+ */
 const handleCancelOrder = async (bookingId) => {
   if (!confirm("Wirklich stornieren?")) return;
   try {
@@ -91,17 +101,16 @@ const handleCancelOrder = async (bookingId) => {
   }
 };
 
+/**
+ * Deletes a service (job offer).
+ * @param {number} serviceId - The ID of the service.
+ */
 const handleDeleteService = async (serviceId) => {
-  // Sicherheitsabfrage
   if (!confirm("Möchtest du dieses Inserat wirklich unwiderruflich löschen?")) return;
 
   try {
-    // API Aufruf zum Löschen (DELETE /services/{id}/)
     await api.deleteService(serviceId);
-
     toast.addToast("Inserat erfolgreich gelöscht", "success");
-
-    // Liste aktualisieren, um das gelöschte Element zu entfernen
     fetchData();
   } catch (err) {
     console.error(err);
@@ -109,9 +118,8 @@ const handleDeleteService = async (serviceId) => {
   }
 };
 
-
-
-
+// --- Lifecycle Hooks ---
+onMounted(fetchData);
 </script>
 
 <template>
@@ -211,7 +219,6 @@ const handleDeleteService = async (serviceId) => {
 </template>
 
 <style scoped>
-/* (Deine bestehenden Styles bleiben hier erhalten) */
 .page-wrapper { padding-top: var(--spacing-lg); padding-bottom: var(--spacing-xxl); }
 .dashboard-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: var(--spacing-xl); flex-wrap: wrap; gap: 20px; position: relative; z-index: 100; }
 .subtitle { color: var(--color-text-light); }

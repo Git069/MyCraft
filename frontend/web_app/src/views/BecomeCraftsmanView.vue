@@ -1,25 +1,25 @@
 <script setup>
+// --- Imports ---
 import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import api from '@/api';
 
+// --- Setup ---
 const authStore = useAuthStore();
 const router = useRouter();
+
+// --- State ---
 const isLoading = ref(false);
 const errorMessage = ref('');
-
 const showForm = ref(false);
 
+// Calculator State
 const hoursPerWeek = ref(10);
 const hourlyRate = 50;
 const weeksPerMonth = 4.2;
 
-const estimatedEarnings = computed(() => {
-  const earnings = hoursPerWeek.value * hourlyRate * weeksPerMonth;
-  return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(earnings);
-});
-
+// Form State
 const profileData = ref({
   company_name: '',
   street_address: '',
@@ -28,6 +28,23 @@ const profileData = ref({
   bio: '',
 });
 
+// --- Computed Properties ---
+
+/**
+ * Calculates the estimated monthly earnings based on the selected hours per week.
+ * Returns a formatted currency string.
+ */
+const estimatedEarnings = computed(() => {
+  const earnings = hoursPerWeek.value * hourlyRate * weeksPerMonth;
+  return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(earnings);
+});
+
+// --- Methods ---
+
+/**
+ * Initiates the process to become a craftsman.
+ * If the user is logged in, shows the form. Otherwise, redirects to registration.
+ */
 const handleStartClick = () => {
   if (authStore.isLoggedIn) {
     showForm.value = true;
@@ -36,10 +53,17 @@ const handleStartClick = () => {
   }
 };
 
+/**
+ * Hides the form and returns to the marketing view.
+ */
 const handleBackClick = () => {
   showForm.value = false;
 };
 
+/**
+ * Submits the craftsman profile data.
+ * Handles API calls, user store updates, and navigation.
+ */
 const handleSubmit = async () => {
   isLoading.value = true;
   errorMessage.value = '';
@@ -65,9 +89,8 @@ const handleSubmit = async () => {
   <div class="page-container">
     <Transition name="fade" mode="out-in">
 
-      <!-- PHASE 1: MARKETING LANDING PAGE -->
+      <!-- Phase 1: Marketing Landing Page -->
       <div v-if="!showForm" class="marketing-view" key="marketing">
-        <!-- Marketing content remains the same -->
         <section class="hero-section">
           <div class="container hero-grid">
             <div class="hero-content">
@@ -115,7 +138,7 @@ const handleSubmit = async () => {
         </section>
       </div>
 
-      <!-- PHASE 2: ONBOARDING FORM (NEW DESIGN) -->
+      <!-- Phase 2: Onboarding Form -->
       <div v-else class="onboarding-view" key="onboarding">
         <div class="form-container">
           <div class="form-wrapper">
@@ -168,11 +191,11 @@ const handleSubmit = async () => {
 </template>
 
 <style scoped>
-/* --- TRANSITION --- */
+/* --- Transition --- */
 .fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
 
-/* --- MARKETING VIEW (UNCHANGED) --- */
+/* --- Marketing View --- */
 .hero-section { padding: var(--spacing-xxl) 0; background-color: white; }
 .hero-grid { display: grid; grid-template-columns: 1fr; gap: var(--spacing-xl); align-items: center; }
 @media (min-width: 992px) { .hero-grid { grid-template-columns: 1fr 1fr; } }
@@ -189,7 +212,7 @@ const handleSubmit = async () => {
 .how-it-works-section { padding: var(--spacing-xxl) 0; background-color: white; }
 .steps-row { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--spacing-lg); flex-wrap: wrap; }
 
-/* --- ONBOARDING FORM (NEW DESIGN) --- */
+/* --- Onboarding Form --- */
 .onboarding-view {
   background-color: white;
   min-height: calc(100vh - 80px);
@@ -210,7 +233,7 @@ const handleSubmit = async () => {
 .form-header {
   margin-bottom: 32px;
   position: relative;
-  text-align: left; /* Left-align header text */
+  text-align: left;
 }
 .form-header h1 {
   font-size: 2rem;
@@ -244,7 +267,7 @@ const handleSubmit = async () => {
   gap: 16px;
 }
 
-/* --- FLOATING LABEL INPUTS --- */
+/* --- Floating Label Inputs --- */
 .floating-label-group {
   position: relative;
 }
@@ -252,14 +275,14 @@ const handleSubmit = async () => {
 .floating-label-group textarea {
   width: 100%;
   height: 56px;
-  padding: 20px 12px 8px 12px; /* More padding top for label */
+  padding: 20px 12px 8px 12px;
   font-size: 1rem;
   border: 1px solid #B0B0B0;
   border-radius: 8px;
   transition: border-color 0.2s ease;
 }
 .floating-label-group textarea {
-  height: auto; /* Allow textarea to grow */
+  height: auto;
   min-height: 120px;
 }
 .floating-label-group label {
@@ -280,7 +303,7 @@ const handleSubmit = async () => {
 .floating-label-group textarea:not(:placeholder-shown) {
   border-width: 2px;
   border-color: var(--color-text);
-  padding-top: 26px; /* Make space for the moved label */
+  padding-top: 26px;
   padding-bottom: 2px;
 }
 
@@ -292,7 +315,7 @@ const handleSubmit = async () => {
   color: var(--color-text);
 }
 
-/* --- BUTTON & ERROR --- */
+/* --- Button & Error --- */
 .cta-button {
   width: 100%;
   height: 56px;

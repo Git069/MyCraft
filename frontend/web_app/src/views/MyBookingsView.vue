@@ -1,19 +1,52 @@
 <script setup>
+// --- Imports ---
 import { ref, onMounted, computed } from 'vue';
 import api from '@/api';
 import BookingCard from '@/components/BookingCard.vue';
 import ReviewModal from '@/components/ReviewModal.vue';
 import { useToastStore } from '@/stores/toast';
 
+// --- Setup ---
+const toast = useToastStore();
+
+// --- State ---
 const bookings = ref([]);
 const loading = ref(true);
 const error = ref(null);
-const toast = useToastStore();
 
-// --- Review State ---
+// Review State
 const showReviewModal = ref(false);
 const reviewTarget = ref(null);
 
+// --- Computed Properties ---
+
+/**
+ * Filters bookings to show only active ones.
+ * Active bookings are those that are not cancelled and not completed with a review.
+ */
+const activeBookings = computed(() => {
+  return bookings.value.filter(b => {
+    if (b.status === 'CANCELLED') return false;
+    if (b.status === 'COMPLETED' && b.review) return false;
+    return true;
+  });
+});
+
+/**
+ * Filters bookings to show only past ones.
+ * Past bookings are those that are cancelled or completed with a review.
+ */
+const pastBookings = computed(() => {
+  return bookings.value.filter(b => {
+    return b.status === 'CANCELLED' || (b.status === 'COMPLETED' && b.review);
+  });
+});
+
+// --- Methods ---
+
+/**
+ * Fetches the user's bookings from the API.
+ */
 const fetchBookings = async () => {
   loading.value = true;
   error.value = null;
@@ -28,28 +61,10 @@ const fetchBookings = async () => {
   }
 };
 
-onMounted(fetchBookings);
-
-// --- Computed Properties für die Aufteilung ---
-const activeBookings = computed(() => {
-  return bookings.value.filter(b => {
-    // Stornierte sind immer vergangen
-    if (b.status === 'CANCELLED') return false;
-    // Erledigte mit Bewertung sind vergangen
-    if (b.status === 'COMPLETED' && b.review) return false;
-    // Alles andere (Pending, Confirmed, Completed ohne Review) ist "Aktuell"
-    return true;
-  });
-});
-
-const pastBookings = computed(() => {
-  return bookings.value.filter(b => {
-    // Stornierte ODER (Erledigte MIT Bewertung)
-    return b.status === 'CANCELLED' || (b.status === 'COMPLETED' && b.review);
-  });
-});
-
-
+/**
+ * Cancels a booking after user confirmation.
+ * @param {number} bookingId - The ID of the booking to cancel.
+ */
 const handleCancel = async (bookingId) => {
   if (!confirm("Möchtest du diese Buchung wirklich stornieren?")) return;
 
@@ -62,6 +77,10 @@ const handleCancel = async (bookingId) => {
   }
 };
 
+/**
+ * Opens the review modal for a specific booking.
+ * @param {Object} booking - The booking object to review.
+ */
 const openReviewModal = (booking) => {
   reviewTarget.value = {
     id: booking.id,
@@ -70,6 +89,10 @@ const openReviewModal = (booking) => {
   showReviewModal.value = true;
 };
 
+/**
+ * Submits a review for a booking.
+ * @param {Object} payload - The review data.
+ */
 const handleReviewSubmit = async (payload) => {
   try {
     await api.createReview({
@@ -86,6 +109,9 @@ const handleReviewSubmit = async (payload) => {
     toast.addToast(msg, "error");
   }
 };
+
+// --- Lifecycle Hooks ---
+onMounted(fetchBookings);
 </script>
 
 <template>
@@ -125,6 +151,7 @@ const handleReviewSubmit = async (payload) => {
             :show-controls="true"
             @cancel="handleCancel"
             @review="openReviewModal"
+            @update="fetchBookings"
           />
         </div>
       </section>
@@ -180,7 +207,7 @@ const handleReviewSubmit = async (payload) => {
   font-size: 1.1rem;
 }
 
-/* Neue Styles für die Sektionen */
+/* Section Styles */
 .section-group {
   margin-bottom: var(--spacing-xxl);
 }
@@ -204,7 +231,6 @@ const handleReviewSubmit = async (payload) => {
   gap: var(--spacing-lg);
 }
 
-/* Optional: Vergangene Aufträge leicht ausblassen, um Fokus auf Aktuelles zu lenken */
 .faded-grid {
   opacity: 0.85;
 }
@@ -215,7 +241,7 @@ const handleReviewSubmit = async (payload) => {
   font-style: italic;
 }
 
-/* Empty State Styles (wie zuvor) */
+/* Empty State Styles */
 .empty-state {
   text-align: center;
   padding: var(--spacing-xxl) 0;

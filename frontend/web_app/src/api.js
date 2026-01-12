@@ -145,6 +145,9 @@ export default {
   getConversationDetails(convoId) { return apiClient.get(`/conversations/${convoId}/`); },
   startConversation(serviceId, message) { return apiClient.post('/conversations/', { job_id: serviceId, message: message }); },
   postMessage(convoId, content) { return apiClient.post(`/conversations/${convoId}/post_message/`, { content: content }); },
+  suggestReply(lastMessage) {
+    return apiClient.post('/conversations/suggest-reply/', { last_message: lastMessage });
+  },
   createOffer(offerData) { return apiClient.post('/offers/', offerData); },
   acceptOffer(offerId) { return apiClient.post(`/offers/${offerId}/accept/`); },
   rejectOffer(offerId) { return apiClient.post(`/offers/${offerId}/reject/`); },

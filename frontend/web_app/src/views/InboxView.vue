@@ -1,4 +1,5 @@
 <script setup>
+// --- Imports ---
 import { ref, onMounted, onUnmounted, computed, nextTick, watch } from 'vue';
 import { useRoute, RouterLink } from 'vue-router';
 import { useChatStore } from '@/stores/chatStore';
@@ -9,11 +10,13 @@ import ReviewModal from '@/components/ReviewModal.vue';
 import UserAvatar from '@/components/UserAvatar.vue';
 import api from '@/api';
 
+// --- Setup ---
 const route = useRoute();
 const chatStore = useChatStore();
 const authStore = useAuthStore();
 const toastStore = useToastStore();
 
+// --- State ---
 const newMessage = ref('');
 const messageContainer = ref(null);
 const showOfferModal = ref(false);
@@ -21,6 +24,7 @@ const offerData = ref({ price: null, description: '' });
 const showReviewModal = ref(false);
 const selectedJobForReview = ref(null);
 
+// --- Computed Properties ---
 const currentUser = computed(() => authStore.currentUser);
 const isCraftsman = computed(() => authStore.isCraftsman);
 
@@ -30,12 +34,61 @@ const latestOffer = computed(() => {
   return offers.length > 0 ? offers[offers.length - 1] : null;
 });
 
+// --- Methods ---
+
+// ... bestehende refs (newMessage, messageContainer, etc.)
+const loadingSuggestion = ref(false); // NEU: Ladestatus
+
+// ... bestehende computed (currentUser, isCraftsman, etc.)
+
+// NEU: Hilfs-Computed Property, um die letzte Nachricht des ANDEREN Teilnehmers zu finden
+const lastPartnerMessage = computed(() => {
+  if (!chatStore.activeConversation?.messages) return null;
+  const msgs = chatStore.activeConversation.messages;
+
+  // Wir suchen rückwärts durch die Nachrichten
+  for (let i = msgs.length - 1; i >= 0; i--) {
+    // Wenn der Sender NICHT ich selbst ist und es Textinhalt gibt
+    if (msgs[i].sender !== currentUser.value?.id && msgs[i].content) {
+      return msgs[i].content;
+    }
+  }
+  return null; // Keine Nachricht gefunden
+});
+
+// NEU: Handler für den KI-Button
+const handleSuggestReply = async () => {
+  if (!lastPartnerMessage.value) {
+    toastStore.addToast("Keine Nachricht zum Antworten gefunden.", "info");
+    return;
+  }
+
+  loadingSuggestion.value = true;
+  try {
+    const response = await api.suggestReply(lastPartnerMessage.value);
+    if (response.data.suggestion) {
+      newMessage.value = response.data.suggestion; // Füllt das Eingabefeld
+    }
+  } catch (err) {
+    console.error(err);
+    toastStore.addToast("Fehler beim Generieren des Vorschlags.", "error");
+  } finally {
+    loadingSuggestion.value = false;
+  }
+};
+
+/**
+ * Sends a new message in the active conversation.
+ */
 const handleSendMessage = async () => {
   await chatStore.sendMessage({ content: newMessage.value });
   newMessage.value = '';
   scrollToBottom();
 };
 
+/**
+ * Creates a new offer for the active conversation.
+ */
 const handleCreateOffer = async () => {
   if (!offerData.value.price || !chatStore.activeConversation) return;
   try {
@@ -44,32 +97,54 @@ const handleCreateOffer = async () => {
     showOfferModal.value = false;
     offerData.value = { price: null, description: '' };
     scrollToBottom();
-  } catch (err) { toastStore.addToast("Fehler beim Erstellen des Angebots.", "error"); }
+  } catch (err) {
+    toastStore.addToast("Fehler beim Erstellen des Angebots.", "error");
+  }
 };
 
+/**
+ * Accepts an offer.
+ * @param {number} offerId - The ID of the offer to accept.
+ */
 const handleAcceptOffer = async (offerId) => {
   try {
     const response = await api.acceptOffer(offerId);
     const messageIndex = chatStore.activeConversation.messages.findIndex(m => m.offer?.id === response.data.id);
     if (messageIndex !== -1) chatStore.activeConversation.messages[messageIndex].offer.status = response.data.status;
     toastStore.addToast("Angebot angenommen!", "success");
-  } catch (err) { toastStore.addToast("Fehler beim Annehmen des Angebots.", "error"); }
+  } catch (err) {
+    toastStore.addToast("Fehler beim Annehmen des Angebots.", "error");
+  }
 };
 
+/**
+ * Rejects an offer.
+ * @param {number} offerId - The ID of the offer to reject.
+ */
 const handleRejectOffer = async (offerId) => {
   try {
     const response = await api.rejectOffer(offerId);
     const messageIndex = chatStore.activeConversation.messages.findIndex(m => m.offer?.id === response.data.id);
     if (messageIndex !== -1) chatStore.activeConversation.messages[messageIndex].offer.status = response.data.status;
     toastStore.addToast("Angebot abgelehnt.", "info");
-  } catch (err) { toastStore.addToast("Fehler beim Ablehnen des Angebots.", "error"); }
+  } catch (err) {
+    toastStore.addToast("Fehler beim Ablehnen des Angebots.", "error");
+  }
 };
 
+/**
+ * Opens the review modal for a specific job.
+ * @param {Object} job - The job object to review.
+ */
 const openReviewModal = (job) => {
   selectedJobForReview.value = job;
   showReviewModal.value = true;
 };
 
+/**
+ * Submits a review for a job.
+ * @param {Object} reviewPayload - The review data.
+ */
 const handleCreateReview = async (reviewPayload) => {
   try {
     const response = await api.createReview(reviewPayload);
@@ -83,26 +158,41 @@ const handleCreateReview = async (reviewPayload) => {
   }
 };
 
+/**
+ * Scrolls the chat window to the bottom.
+ */
 const scrollToBottom = async () => {
   await nextTick();
   if (messageContainer.value) messageContainer.value.scrollTop = messageContainer.value.scrollHeight;
 };
 
+/**
+ * Gets the other participant in the conversation.
+ * @param {Object} convo - The conversation object.
+ * @returns {Object} The other participant's user object.
+ */
 const getOtherParticipant = (convo) => {
   if (!convo?.participants_details) return { username: 'Unbekannt', id: null };
   return convo.participants_details.find(p => p.id !== currentUser.value?.id) || { username: 'Unbekannt', id: null };
 };
 
+/**
+ * Gets the avatar URL for the other participant.
+ * @param {Object} convo - The conversation object.
+ * @returns {string|null} The avatar URL or null.
+ */
 const getParticipantAvatar = (convo) => {
   const other = getOtherParticipant(convo);
   if (other?.profile_picture) return `http://localhost:8000${other.profile_picture}`;
   return null;
 };
 
+// --- Watchers ---
 watch(() => chatStore.activeConversation?.messages, () => {
   scrollToBottom();
 }, { deep: true });
 
+// --- Lifecycle Hooks ---
 onMounted(async () => {
   const activeConvoId = parseInt(route.query.active_convo, 10);
   await chatStore.fetchConversations(activeConvoId);
@@ -168,7 +258,20 @@ onUnmounted(() => {
             </div>
             <footer class="chat-input-container">
               <form @submit.prevent="handleSendMessage" class="chat-form">
+
                 <button v-if="isCraftsman" @click.prevent="showOfferModal = true" class="offer-btn" title="Angebot erstellen">+</button>
+
+                <button
+                  v-if="isCraftsman"
+                  @click.prevent="handleSuggestReply"
+                  class="ai-btn"
+                  title="KI-Antwortvorschlag generieren"
+                  :disabled="loadingSuggestion || !lastPartnerMessage"
+                >
+                  <span v-if="loadingSuggestion" class="spinning">⏳</span>
+                  <span v-else>✨</span>
+                </button>
+
                 <input v-model="newMessage" type="text" placeholder="Schreibe eine Nachricht..." />
                 <button type="submit" class="send-btn">➤</button>
               </form>
@@ -238,7 +341,7 @@ onUnmounted(() => {
   background: white;
 }
 
-/* --- 1. CONVERSATION LIST (SIDEBAR) --- */
+/* --- 1. Conversation List (Sidebar) --- */
 .conversation-list-panel {
   border-right: 1px solid var(--color-border);
   overflow-y: auto;
@@ -307,7 +410,7 @@ onUnmounted(() => {
   margin: 0;
 }
 
-/* --- 2. CHAT WINDOW --- */
+/* --- 2. Chat Window --- */
 .chat-panel {
   display: flex;
   flex-direction: column;
@@ -417,7 +520,7 @@ onUnmounted(() => {
   border-bottom-left-radius: 4px;
 }
 
-/* --- 3. DETAILS PANEL (RIGHT) --- */
+/* --- 3. Details Panel (Right) --- */
 .details-panel {
   border-left: 1px solid var(--color-border);
   background-color: white;
@@ -433,7 +536,7 @@ onUnmounted(() => {
 .divider { border-bottom: 1px solid var(--color-border); margin: 24px 0; }
 .primary-action { width: 100%; }
 
-/* --- MODAL --- */
+/* --- Modal --- */
 .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000; }
 .modal-card { background: white; padding: 24px; border-radius: 12px; width: 90%; max-width: 400px; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
@@ -441,7 +544,7 @@ onUnmounted(() => {
 .form-group label { display: block; margin-bottom: 4px; font-weight: 600; font-size: 0.9rem; }
 .form-group input, .form-group textarea { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 8px; }
 
-/* --- EMPTY STATES --- */
+/* --- Empty States --- */
 .empty-chat-state {
   display: flex;
   flex-direction: column;
@@ -452,4 +555,41 @@ onUnmounted(() => {
   color: #717171;
 }
 .empty-chat-state .icon { font-size: 4rem; margin-bottom: 1rem; opacity: 0.5; }
+
+.ai-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  color: #717171; /* Oder eine spezielle Farbe wie Lila/Gold für KI */
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s, color 0.2s;
+  font-size: 1.2rem;
+}
+
+.ai-btn:hover {
+  background-color: #f0f0f0;
+  color: #9c27b0; /* Lila Hover-Farbe für "Magie" */
+}
+
+.ai-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Optional: Einfache Rotation für den Lade-Indikator */
+.spinning {
+  display: inline-block;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
 </style>

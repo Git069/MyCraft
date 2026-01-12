@@ -1,24 +1,63 @@
 <script setup>
+// --- Imports ---
 import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import api from '@/api';
 import { useAuthStore } from '@/stores/auth';
 import StarRating from '@/components/StarRating.vue';
 
+// --- Setup ---
 const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
 
+// --- State ---
 const craftsman = ref(null);
 const loading = ref(true);
-
 const craftsmanId = route.params.id;
+
+// --- Computed Properties ---
 const currentUser = computed(() => authStore.currentUser);
 
 const isOwnProfile = computed(() => {
   return currentUser.value && currentUser.value.id === parseInt(craftsmanId, 10);
 });
 
+const memberSince = computed(() => {
+  if (!craftsman.value?.date_joined) return '';
+  return new Date(craftsman.value.date_joined).getFullYear();
+});
+
+// --- Methods ---
+
+/**
+ * Constructs the full URL for an image path.
+ * @param {string} url - The relative image URL.
+ * @returns {string|null} The full URL or null.
+ */
+const fullImageUrl = (url) => url ? `http://localhost:8000${url}` : null;
+
+/**
+ * Formats a date string into a localized month and year string.
+ * @param {string} dateString - The date string to format.
+ * @returns {string} Formatted date string.
+ */
+const formatReviewDate = (dateString) => {
+  const date = new Date(dateString);
+  return date.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
+};
+
+/**
+ * Handles the contact button click.
+ * Navigates to the inbox.
+ */
+const handleContactClick = () => {
+  // This would ideally start a conversation about a generic topic,
+  // for now, we just navigate to the inbox.
+  router.push({ name: 'Inbox' });
+};
+
+// --- Lifecycle Hooks ---
 onMounted(async () => {
   try {
     const response = await api.getUserDetails(craftsmanId);
@@ -29,24 +68,6 @@ onMounted(async () => {
     loading.value = false;
   }
 });
-
-const fullImageUrl = (url) => url ? `http://localhost:8000${url}` : null;
-
-const memberSince = computed(() => {
-  if (!craftsman.value?.date_joined) return '';
-  return new Date(craftsman.value.date_joined).getFullYear();
-});
-
-const formatReviewDate = (dateString) => {
-  const date = new Date(dateString);
-  return date.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
-};
-
-const handleContactClick = () => {
-  // This would ideally start a conversation about a generic topic,
-  // for now, we just navigate to the inbox.
-  router.push({ name: 'Inbox' });
-};
 </script>
 
 <template>
