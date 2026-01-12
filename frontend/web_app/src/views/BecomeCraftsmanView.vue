@@ -111,7 +111,7 @@ const handleSubmit = async () => {
           <div class="container hero-grid">
             <div class="hero-content">
               <h1 class="hero-headline">Mach dein Handwerk zu Geld.</h1>
-              <p class="hero-subline">Finde passende Aufträge in deiner Nähe, ohne Akquise-Stress. Du entscheidest, wann und wo du arbeitest.</p>
+              <p class="hero-subline">Erstelle Angebote für deine Dienstleistungen und lass dich von Kunden in deiner Nähe buchen. Du entscheidest, wann und wo du arbeitest.</p>
               <div class="earnings-calculator">
                 <div class="calculator-header">
                   <span class="earnings-amount">{{ estimatedEarnings }}</span>
@@ -135,7 +135,7 @@ const handleSubmit = async () => {
             <h2 class="section-title text-center">Warum MyCraft?</h2>
             <div class="benefits-grid">
               <div class="benefit-card"><div class="icon">🛡️</div><h3>Abgesicherte Zahlungen</h3><p>Kein Risiko mehr. Der Kunde zahlt den Betrag sicher ein, und du erhältst dein Geld garantiert nach Abschluss der Arbeit.</p></div>
-              <div class="benefit-card"><div class="icon">📅</div><h3>Volle Kontrolle</h3><p>Du bist dein eigener Chef. Wähle nur die Aufträge aus, die zu deinem Zeitplan und deinen Fähigkeiten passen.</p></div>
+              <div class="benefit-card"><div class="icon">📅</div><h3>Volle Kontrolle</h3><p>Du bist dein eigener Chef. Erstelle Angebote, die genau zu deinem Zeitplan und deinen Fähigkeiten passen.</p></div>
               <div class="benefit-card"><div class="icon">🔍</div><h3>Geprüfte Kunden</h3><p>Wir verifizieren Auftraggeber, damit du dich sicher fühlen kannst. Bewertungen helfen dir, die besten Kunden zu finden.</p></div>
             </div>
           </div>
@@ -144,11 +144,11 @@ const handleSubmit = async () => {
           <div class="container">
             <h2 class="section-title text-center">So einfach geht's</h2>
             <div class="steps-row">
-              <div class="step"><span class="step-number">1</span><h4>Profil erstellen</h4><p>Registriere dich und gib an, welche Dienstleistungen du anbietest.</p></div>
+              <div class="step"><span class="step-number">1</span><h4>Profil erstellen</h4><p>Registriere dich und vervollständige dein Handwerker-Profil.</p></div>
               <div class="step-connector"></div>
-              <div class="step"><span class="step-number">2</span><h4>Aufträge finden</h4><p>Durchsuche aktuelle Anfragen in deiner Umgebung und bewirb dich.</p></div>
+              <div class="step"><span class="step-number">2</span><h4>Angebote erstellen</h4><p>Erstelle Dienstleistungsangebote, die Kunden direkt bei dir buchen können.</p></div>
               <div class="step-connector"></div>
-              <div class="step"><span class="step-number">3</span><h4>Geld verdienen</h4><p>Erledige den Job und erhalte deine Auszahlung direkt auf dein Konto.</p></div>
+              <div class="step"><span class="step-number">3</span><h4>Geld verdienen</h4><p>Führe die gebuchten Aufträge aus und erhalte deine Auszahlung.</p></div>
             </div>
           </div>
         </section>
