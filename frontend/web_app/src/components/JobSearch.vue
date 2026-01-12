@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, watch, computed } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
+import { useToastStore } from '@/stores/toast';
 
 const props = defineProps({
   enableRouting: { type: Boolean, default: true }
@@ -9,12 +10,14 @@ const props = defineProps({
 const emit = defineEmits(['search-triggered']);
 const router = useRouter();
 const route = useRoute();
+const toastStore = useToastStore();
 
 // --- STATE ---
 const searchTerm = ref('');
 const location = ref('');
 const searchRadius = ref(20); // Standard: 20km
 const activeField = ref(null); // 'search', 'location', oder 'radius'
+const isLocating = ref(false);
 
 // --- DATA ---
 const categories = [
@@ -89,15 +92,44 @@ const selectCategory = (category) => {
   executeSearch({ trade: category.id, search: '' });
 };
 
+const detectLocation = () => {
+  if (!navigator.geolocation) {
+    toastStore.addToast("Geolokalisierung wird von deinem Browser nicht unterstützt.", "error");
+    return;
+  }
+
+  isLocating.value = true;
+  location.value = "Standort wird ermittelt...";
+
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      const { latitude, longitude } = position.coords;
+      isLocating.value = false;
+      location.value = "Mein Standort";
+      
+      // Suche direkt ausführen mit Koordinaten
+      executeSearch({
+        lat: latitude,
+        lng: longitude
+      });
+    },
+    (error) => {
+      console.error("Geolocation error:", error);
+      toastStore.addToast("Standort konnte nicht ermittelt werden.", "error");
+      isLocating.value = false;
+      location.value = "";
+    }
+  );
+};
+
 const selectLocation = (loc) => {
   if (loc.isAction) {
-    location.value = "Mein Standort";
-    // Hier könnte man theoretisch sofort Geolocation abfragen
+    detectLocation();
   } else {
     location.value = loc.title;
+    // Nach Location-Wahl springen wir (optional) direkt zum Radius oder schließen
+    activeField.value = 'radius';
   }
-  // Nach Location-Wahl springen wir (optional) direkt zum Radius oder schließen
-  activeField.value = 'radius';
 };
 
 // Initialisierung aus URL
@@ -149,6 +181,7 @@ watch(() => route.query, (newQuery) => {
             autocomplete="off"
             @focus="onFocus('location')"
             @blur="onBlur"
+            :disabled="isLocating"
           />
         </div>
 
