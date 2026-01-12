@@ -29,7 +29,9 @@ const handleLogin = async () => {
       username: email.value,
       password: password.value,
     });
-    router.push({ name: 'Dashboard' });
+
+    // Always redirect to Home, regardless of user type
+    router.push({ name: 'Home' });
   } catch (error) {
     toastStore.addToast('Anmeldedaten sind ungültig. Bitte versuchen Sie es erneut.', 'error');
   } finally {
