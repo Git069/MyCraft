@@ -1,18 +1,51 @@
 <script setup>
+/**
+ * ReviewModal.vue
+ *
+ * A modal component for submitting a review for a completed job.
+ * Allows the user to select a star rating and provide an optional comment.
+ */
+
+// --- Imports ---
 import { ref } from 'vue';
 import StarRating from './StarRating.vue';
 
+// --- Props & Emits ---
+
+/**
+ * Props definition.
+ * @property {Object} job - The job object being reviewed.
+ * @property {boolean} isOpen - Whether the modal is currently visible.
+ */
 const props = defineProps({
   job: { type: Object, required: true },
   isOpen: { type: Boolean, required: true }
 });
 
+/**
+ * Emits definition.
+ * @emits close - Emitted when the modal should be closed.
+ * @emits submit - Emitted when the review is submitted.
+ */
 const emit = defineEmits(['close', 'submit']);
 
+// --- Reactive State ---
+
+/** @type {import('vue').Ref<number>} The selected star rating (0-5) */
 const rating = ref(0);
+
+/** @type {import('vue').Ref<string>} The optional review comment */
 const comment = ref('');
+
+/** @type {import('vue').Ref<boolean>} Loading state for submission */
 const isSubmitting = ref(false);
 
+// --- Methods ---
+
+/**
+ * Handles the review submission.
+ * Validates that a rating is selected before emitting the submit event.
+ */
 const handleSubmit = () => {
   if (rating.value === 0) return; // Validation
   isSubmitting.value = true;
@@ -25,6 +58,10 @@ const handleSubmit = () => {
   isSubmitting.value = false;
 };
 
+/**
+ * Handles closing the modal.
+ * Resets the form fields and emits the close event.
+ */
 const handleClose = () => {
   emit('close');
   // Reset fields

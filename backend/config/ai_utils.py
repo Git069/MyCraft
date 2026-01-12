@@ -1,22 +1,36 @@
-from google import genai
-from google.genai import types
 import os
 
-# Konfiguration
+from google import genai
+from google.genai import types
+
+# Configuration
 api_key = os.environ.get("GEMINI_API_KEY")
 
-# Liste der Modelle, die wir nacheinander probieren
-# Wir starten mit dem aktuellsten stabilen Flash-Modell
+# List of models to try sequentially
+# We start with the most recent stable Flash model
 MODEL_CANDIDATES = [
     'gemini-2.5-flash',
     'gemini-1.5-flash-001',
     'gemini-1.5-flash-002',
     'gemini-1.5-flash-8b',
-    'gemini-pro'  # Fallback auf Version 1.0
+    'gemini-pro'  # Fallback to version 1.0
 ]
 
 
 def get_ai_response(prompt_text):
+    """
+    Generates a response from the AI model based on the provided prompt text.
+
+    Iterates through a list of candidate models and returns the response from the
+    first successful one.
+
+    Args:
+        prompt_text (str): The input text prompt for the AI model.
+
+    Returns:
+        str: The text response from the AI model, or an error message if all
+             attempts fail or if the API key is missing.
+    """
     if not api_key:
         return "Kein API Key konfiguriert."
 
@@ -25,26 +39,26 @@ def get_ai_response(prompt_text):
 
         last_error = None
 
-        # Wir probieren die Modelle der Reihe nach durch
+        # Try the models one by one
         for model_name in MODEL_CANDIDATES:
             try:
-                # Versuch, das Modell abzurufen
+                # Attempt to retrieve the model
                 response = client.models.generate_content(
                     model=model_name,
                     contents=prompt_text
                 )
 
-                # Wenn wir hier sind, hat es geklappt!
+                # If we are here, it worked!
                 print(f"Erfolg mit Modell: {model_name}")
                 return response.text
 
             except Exception as e:
-                # Fehler speichern und mit dem nächsten Modell weitermachen
+                # Save error and continue with the next model
                 print(f"Modell {model_name} fehlgeschlagen: {e}")
                 last_error = e
                 continue
 
-        # Wenn gar nichts geklappt hat:
+        # If nothing worked:
         return f"Entschuldigung, keines der KI-Modelle war erreichbar. Letzter Fehler: {str(last_error)}"
 
     except Exception as e:

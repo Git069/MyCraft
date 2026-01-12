@@ -1,4 +1,18 @@
 <script setup>
+/**
+ * BaseSkeleton.vue
+ *
+ * A reusable skeleton loader component to display placeholders while content is loading.
+ */
+
+// --- Props ---
+
+/**
+ * Props definition.
+ * @property {string} width - The width of the skeleton element (default: '100%').
+ * @property {string} height - The height of the skeleton element (default: '1em').
+ * @property {string} borderRadius - The border radius of the skeleton element (default: '4px').
+ */
 defineProps({
   width: {
     type: String,

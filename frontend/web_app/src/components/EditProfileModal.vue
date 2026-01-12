@@ -1,8 +1,23 @@
 <script setup>
+/**
+ * EditProfileModal.vue
+ *
+ * A modal component for editing user profile information.
+ * Supports updating text fields (bio, address, etc.) and uploading a profile picture.
+ */
+
+// --- Imports ---
 import { ref, reactive, onMounted } from 'vue';
 import api from '@/api';
 import { useToastStore } from '@/stores/toast';
 
+// --- Props & Emits ---
+
+/**
+ * Props definition.
+ * @property {Object} user - The user object containing current profile data.
+ * @property {boolean} isOpen - Whether the modal is currently visible.
+ */
 const props = defineProps({
   user: {
     type: Object,
@@ -14,14 +29,32 @@ const props = defineProps({
   }
 });
 
+/**
+ * Emits definition.
+ * @emits close - Emitted when the modal should be closed.
+ * @emits updated - Emitted when the profile has been successfully updated.
+ */
 const emit = defineEmits(['close', 'updated']);
+
+// --- Reactive State ---
+
 const toast = useToastStore();
+
+/** @type {import('vue').Ref<boolean>} Loading state for form submission */
 const isLoading = ref(false);
+
+/** @type {import('vue').Ref<HTMLInputElement|null>} Reference to the hidden file input */
 const fileInput = ref(null);
+
+/** @type {import('vue').Ref<File|null>} The selected file for upload */
 const selectedFile = ref(null);
+
+/** @type {import('vue').Ref<string|null>} URL for the image preview */
 const previewImage = ref(null);
 
-// Formular-Status
+/**
+ * Reactive form data object.
+ */
 const formData = reactive({
   company_name: '',
   bio: '',
@@ -30,19 +63,35 @@ const formData = reactive({
   zip_code: ''
 });
 
-// Daten initialisieren
+// --- Lifecycle Hooks ---
+
+/**
+ * Initialize form data with user props on mount.
+ */
 onMounted(() => {
   if (props.user) {
     formData.company_name = props.user.company_name || '';
     formData.bio = props.user.bio || '';
-    formData.street_address = props.user.street_address || ''; // Kommt jetzt vom aktualisierten Serializer
+    formData.street_address = props.user.street_address || ''; // Comes from updated serializer
     formData.city = props.user.city || '';
     formData.zip_code = props.user.zip_code || '';
   }
 });
 
+// --- Methods ---
+
+/**
+ * Constructs the full URL for an image path.
+ * @param {string} url - The relative image URL.
+ * @returns {string|null} The full URL or null.
+ */
 const fullImageUrl = (url) => url ? `http://localhost:8000${url}` : null;
 
+/**
+ * Handles file selection change event.
+ * Updates the selected file and generates a preview URL.
+ * @param {Event} event - The input change event.
+ */
 const handleFileChange = (event) => {
   const file = event.target.files[0];
   if (file) {
@@ -51,17 +100,24 @@ const handleFileChange = (event) => {
   }
 };
 
+/**
+ * Triggers the hidden file input click.
+ */
 const triggerFileInput = () => {
   fileInput.value.click();
 };
 
+/**
+ * Submits the form data to the API.
+ * Updates text profile data first, then uploads the profile picture if changed.
+ */
 const submitForm = async () => {
   isLoading.value = true;
   try {
-    // 1. Textdaten aktualisieren
+    // 1. Update text data
     await api.updateUserProfile(formData);
 
-    // 2. Bild aktualisieren (falls geändert)
+    // 2. Update image (if changed)
     if (selectedFile.value) {
       const imageFormData = new FormData();
       imageFormData.append('profile_picture', selectedFile.value);
@@ -72,7 +128,7 @@ const submitForm = async () => {
     emit('updated');
     emit('close');
   } catch (error) {
-    console.error("Fehler beim Speichern:", error);
+    console.error("Error saving profile:", error);
     toast.addToast('Fehler beim Speichern.', 'error');
   } finally {
     isLoading.value = false;

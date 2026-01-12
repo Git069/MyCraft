@@ -1,22 +1,52 @@
 <script setup>
+/**
+ * JobCard.vue
+ *
+ * A card component representing a job/service offer.
+ * Displays service details, status, and provides actions for the owner.
+ */
+
+// --- Imports ---
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { STATUS_TRANSLATIONS, TRADE_TRANSLATIONS } from '@/constants';
 
 // --- Props & Emits ---
+
+/**
+ * Props definition.
+ * @property {Object} service - The service object containing details.
+ * @property {boolean} showControls - Whether to show action buttons (default: false).
+ */
 const props = defineProps({
   service: { type: Object, required: true },
   showControls: { type: Boolean, default: false }
 });
 
+/**
+ * Emits definition.
+ * @emits delete - Emitted when the user wants to delete the service.
+ * @emits edit - Emitted when the user wants to edit the service.
+ * @emits mark-completed - Emitted when the service is marked as completed.
+ * @emits cancel - Emitted when the service is cancelled.
+ * @emits review - Emitted when the user wants to review the service.
+ */
 const emit = defineEmits(['delete', 'edit', 'mark-completed', 'cancel', 'review']);
 
-// --- Setup ---
+// --- Reactive State ---
+
 const router = useRouter();
+
+// --- Computed Properties ---
+
+/**
+ * Safely access the service object, defaulting to an empty object if null.
+ */
 const safeService = computed(() => props.service || {});
 
-// --- Constants ---
-// Image sources for different trades. Keys must match backend IDs or normalized values.
+/**
+ * Image sources for different trades. Keys must match backend IDs or normalized values.
+ */
 const tradeImages = {
   PLUMBER: 'https://images.unsplash.com/photo-1581244277943-fe4a9c777189?auto=format&fit=crop&w=500&q=80',
   ELECTRICIAN: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=500&q=80',
@@ -26,11 +56,10 @@ const tradeImages = {
   OTHER: 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?auto=format&fit=crop&w=500&q=80'
 };
 
-// --- Computed Properties ---
-
 /**
  * Determines the appropriate image based on the service trade.
  * Handles normalization and German fallbacks.
+ * @returns {string} The URL of the image.
  */
 const serviceImage = computed(() => {
   const rawTrade = safeService.value.trade;
@@ -55,27 +84,42 @@ const serviceImage = computed(() => {
   return tradeImages.OTHER;
 });
 
+/**
+ * Formats the price as currency (EUR).
+ */
 const formattedPrice = computed(() => {
   return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' })
     .format(safeService.value.price || 0);
 });
 
+/**
+ * Formats the execution date.
+ */
 const formattedDate = computed(() => {
   if (!safeService.value.execution_date) return 'Termin flexibel';
   return new Date(safeService.value.execution_date).toLocaleDateString('de-DE', { day: 'numeric', month: 'short' });
 });
 
+/**
+ * Returns the display title for the service, optionally including the city.
+ */
 const displayTitle = computed(() => {
   const title = safeService.value.title || 'Angebot';
   const city = safeService.value.city || '';
   return city ? `${title} in ${city}` : title;
 });
 
+/**
+ * Translates the service status code to a human-readable string.
+ */
 const translatedStatus = computed(() => {
   const status = safeService.value.status;
   return STATUS_TRANSLATIONS[status] || status;
 });
 
+/**
+ * Translates the trade code to a human-readable string.
+ */
 const translatedTrade = computed(() => {
   const trade = safeService.value.trade;
   return TRADE_TRANSLATIONS[trade] || trade;
@@ -83,6 +127,10 @@ const translatedTrade = computed(() => {
 
 // --- Methods ---
 
+/**
+ * Handles image loading errors by setting a fallback image.
+ * @param {Event} e - The error event.
+ */
 const handleImageError = (e) => {
   // Fallback to 'OTHER' image if loading fails, preventing infinite loops.
   if (e.target.src !== tradeImages.OTHER) {
@@ -91,12 +139,18 @@ const handleImageError = (e) => {
   }
 };
 
+/**
+ * Navigates to the service detail page.
+ */
 const goToDetail = () => {
   if (safeService.value.id) {
     router.push({ name: 'ServiceDetail', params: { id: safeService.value.id } });
   }
 };
 
+/**
+ * Navigates to the service edit page.
+ */
 const goToEdit = () => {
   if (safeService.value.id) {
     router.push({ name: 'ServiceEdit', params: { id: safeService.value.id } });

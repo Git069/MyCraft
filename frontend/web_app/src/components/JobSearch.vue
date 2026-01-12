@@ -1,25 +1,56 @@
 <script setup>
+/**
+ * JobSearch.vue
+ *
+ * Component for searching jobs with filters for trade, location, and radius.
+ * Supports both routing-based search and event-based search.
+ */
+
+// --- Imports ---
 import { ref, onMounted, watch, computed } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useToastStore } from '@/stores/toast';
 
+// --- Props & Emits ---
+
+/**
+ * Props definition.
+ * @property {boolean} enableRouting - Whether to push to router on search or emit event.
+ */
 const props = defineProps({
   enableRouting: { type: Boolean, default: true }
 });
 
+/**
+ * Emits definition.
+ * @emits search-triggered - Emitted when search is executed and routing is disabled.
+ */
 const emit = defineEmits(['search-triggered']);
+
+// --- Reactive State ---
+
 const router = useRouter();
 const route = useRoute();
 const toastStore = useToastStore();
 
-// --- STATE ---
+/** @type {import('vue').Ref<string>} Search term input */
 const searchTerm = ref('');
+
+/** @type {import('vue').Ref<string>} Location input */
 const location = ref('');
+
+/** @type {import('vue').Ref<number>} Search radius in km */
 const searchRadius = ref(20); // Standard: 20km
-const activeField = ref(null); // 'search', 'location', oder 'radius'
+
+/** @type {import('vue').Ref<string|null>} Currently active input field */
+const activeField = ref(null); // 'search', 'location', or 'radius'
+
+/** @type {import('vue').Ref<boolean>} Geolocation loading state */
 const isLocating = ref(false);
 
-// --- DATA ---
+// --- Data ---
+
+/** Categories available for search suggestions */
 const categories = [
   { id: 'PAINTER', title: 'Maler & Lackierer', desc: 'Wände & Fassaden', icon: '🎨' },
   { id: 'ELECTRICIAN', title: 'Elektriker', desc: 'Installation & Reparatur', icon: '⚡' },
@@ -27,6 +58,7 @@ const categories = [
   { id: 'CARPENTER', title: 'Tischler', desc: 'Möbel & Holz', icon: '🪚' }
 ];
 
+/** Location suggestions */
 const locations = [
   { id: 'current', title: 'Standort verwenden', desc: 'GPS nutzen', icon: '📍', isAction: true },
   { id: 'berlin', title: 'Berlin', desc: 'Region', icon: '🏙️' },
@@ -34,31 +66,62 @@ const locations = [
   { id: 'munich', title: 'München', desc: 'Region', icon: '🥨' }
 ];
 
-// --- ACTIONS ---
+// --- Watchers ---
 
+/**
+ * Watch for route query changes to update local state.
+ */
+watch(() => route.query, (newQuery) => {
+  if (newQuery.search !== undefined) searchTerm.value = newQuery.search;
+  if (newQuery.city !== undefined) location.value = newQuery.city;
+  if (newQuery.radius) searchRadius.value = parseInt(newQuery.radius);
+});
+
+// --- Lifecycle Hooks ---
+
+/**
+ * Initialize state from URL query parameters on mount.
+ */
+onMounted(() => {
+  if (route.query.search) searchTerm.value = route.query.search;
+  if (route.query.city) location.value = route.query.city;
+  if (route.query.radius) searchRadius.value = parseInt(route.query.radius);
+
+  if (!searchTerm.value && route.query.trade) {
+    const cat = categories.find(c => c.id === route.query.trade);
+    if (cat) searchTerm.value = cat.title;
+  }
+});
+
+// --- Methods ---
+
+/**
+ * Executes the search logic.
+ * @param {Object} payloadOverride - Optional parameters to override base search params.
+ */
 const executeSearch = (payloadOverride = {}) => {
-  // 1. Wir nehmen die aktuellen Werte aus den Eingabefeldern als Basis
+  // 1. Take current values from input fields as base
   const baseParams = {
     search: searchTerm.value,
     city: location.value,
-    radius: searchRadius.value // <--- Hier wird der Radius immer mitgenommen!
+    radius: searchRadius.value // Radius is always included
   };
 
-  // 2. Wir überschreiben sie mit eventuellen Parametern (z.B. Trade beim Klick auf ein Icon)
-  // Wichtig: payloadOverride kommt NACH baseParams
+  // 2. Override with potential parameters (e.g. Trade when clicking an icon)
+  // Important: payloadOverride comes AFTER baseParams
   const finalParams = {
     ...baseParams,
     ...payloadOverride
   };
 
-  // 3. Leere Werte entfernen (Aufräumen)
+  // 3. Remove empty values (Cleanup)
   Object.keys(finalParams).forEach(key => {
     if (finalParams[key] === undefined || finalParams[key] === '' || finalParams[key] === null) {
       delete finalParams[key];
     }
   });
 
-  // 4. Routing oder Event auslösen
+  // 4. Trigger routing or emit event
   if (props.enableRouting) {
     router.push({
       name: 'JobMarketplace',
@@ -71,27 +134,43 @@ const executeSearch = (payloadOverride = {}) => {
   activeField.value = null;
 };
 
+/**
+ * Handles the search form submission.
+ */
 const handleSearch = () => {
   executeSearch();
 };
 
+/**
+ * Sets the active field on focus.
+ * @param {string} field - The field identifier.
+ */
 const onFocus = (field) => {
   activeField.value = field;
 };
 
-// Verzögertes Schließen, damit Klicks im Dropdown noch registriert werden
+/**
+ * Handles blur event with delay to allow dropdown interaction.
+ */
 const onBlur = () => {
   setTimeout(() => {
     activeField.value = null;
   }, 200);
 };
 
+/**
+ * Selects a category and triggers search.
+ * @param {Object} category - The selected category.
+ */
 const selectCategory = (category) => {
   searchTerm.value = category.title;
-  // Wir suchen direkt mit dem Trade-Filter
+  // Search directly with the trade filter
   executeSearch({ trade: category.id, search: '' });
 };
 
+/**
+ * Detects current user location using Geolocation API.
+ */
 const detectLocation = () => {
   if (!navigator.geolocation) {
     toastStore.addToast("Geolokalisierung wird von deinem Browser nicht unterstützt.", "error");
@@ -107,7 +186,7 @@ const detectLocation = () => {
       isLocating.value = false;
       location.value = "Mein Standort";
       
-      // Suche direkt ausführen mit Koordinaten
+      // Execute search directly with coordinates
       executeSearch({
         lat: latitude,
         lng: longitude
@@ -122,33 +201,19 @@ const detectLocation = () => {
   );
 };
 
+/**
+ * Selects a location from suggestions.
+ * @param {Object} loc - The selected location.
+ */
 const selectLocation = (loc) => {
   if (loc.isAction) {
     detectLocation();
   } else {
     location.value = loc.title;
-    // Nach Location-Wahl springen wir (optional) direkt zum Radius oder schließen
+    // After location selection, optionally jump to radius or close
     activeField.value = 'radius';
   }
 };
-
-// Initialisierung aus URL
-onMounted(() => {
-  if (route.query.search) searchTerm.value = route.query.search;
-  if (route.query.city) location.value = route.query.city;
-  if (route.query.radius) searchRadius.value = parseInt(route.query.radius);
-
-  if (!searchTerm.value && route.query.trade) {
-    const cat = categories.find(c => c.id === route.query.trade);
-    if (cat) searchTerm.value = cat.title;
-  }
-});
-
-watch(() => route.query, (newQuery) => {
-  if (newQuery.search !== undefined) searchTerm.value = newQuery.search;
-  if (newQuery.city !== undefined) location.value = newQuery.city;
-  if (newQuery.radius) searchRadius.value = parseInt(newQuery.radius);
-});
 </script>
 
 <template>

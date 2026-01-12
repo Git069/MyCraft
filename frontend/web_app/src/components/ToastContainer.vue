@@ -1,6 +1,15 @@
 <script setup>
+/**
+ * ToastContainer.vue
+ *
+ * A container component that displays toast notifications.
+ * Subscribes to the ToastStore to render active toasts with animations.
+ */
+
+// --- Imports ---
 import { useToastStore } from '@/stores/toast';
 
+// --- Reactive State ---
 const toastStore = useToastStore();
 </script>
 

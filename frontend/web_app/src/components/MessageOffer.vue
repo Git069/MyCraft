@@ -1,7 +1,21 @@
 <script setup>
+/**
+ * MessageOffer.vue
+ *
+ * A component to display a binding offer within a chat message.
+ * Allows the client to accept or reject the offer.
+ */
+
+// --- Imports ---
 import { computed } from 'vue';
 import { useAuthStore } from '@/stores/auth';
 
+// --- Props & Emits ---
+
+/**
+ * Props definition.
+ * @property {Object} offer - The offer object containing details like price, status, and description.
+ */
 const props = defineProps({
   offer: {
     type: Object,
@@ -9,16 +23,40 @@ const props = defineProps({
   }
 });
 
+/**
+ * Emits definition.
+ * @emits accept - Emitted when the client accepts the offer.
+ * @emits reject - Emitted when the client rejects the offer.
+ */
 const emit = defineEmits(['accept', 'reject']);
 
+// --- Reactive State ---
+
 const authStore = useAuthStore();
+
+// --- Computed Properties ---
+
+/**
+ * Retrieves the current authenticated user.
+ */
 const currentUser = computed(() => authStore.currentUser);
 
+/**
+ * Determines if the current user is the client (the one receiving the offer).
+ * The client is the one who did NOT create the offer.
+ * @returns {boolean} True if the current user is the client.
+ */
 const isClient = computed(() => {
-  // The client is the one who did NOT create the offer
   return currentUser.value?.id !== props.offer.creator;
 });
 
+// --- Methods ---
+
+/**
+ * Formats the price as currency (EUR).
+ * @param {number} price - The price to format.
+ * @returns {string} The formatted price string.
+ */
 const formatPrice = (price) => {
   return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(price);
 };

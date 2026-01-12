@@ -1,4 +1,12 @@
 <script setup>
+/**
+ * JobCardSkeleton.vue
+ *
+ * A skeleton loader component specifically designed to mimic the layout of JobCard.vue.
+ * Used to display a loading state while job data is being fetched.
+ */
+
+// --- Imports ---
 import BaseSkeleton from './BaseSkeleton.vue';
 </script>
 

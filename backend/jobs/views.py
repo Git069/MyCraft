@@ -3,21 +3,22 @@ from django.contrib.gis.geos import Point
 from django.contrib.gis.measure import D
 from django.db.models import Q
 from django.utils import timezone
-from datetime import timedelta
-from rest_framework import viewsets, permissions, status
-from rest_framework.decorators import action
-from rest_framework.response import Response
-from rest_framework.pagination import PageNumberPagination
-
 from geopy.geocoders import Nominatim
+from rest_framework import permissions, status, viewsets
+from rest_framework.decorators import action
+from rest_framework.pagination import PageNumberPagination
+from rest_framework.response import Response
 
 from config.ai_utils import get_ai_response
-from .models import Job, Booking
+from .models import Booking, Job
 from .permissions import IsOwnerOrReadOnly
-from .serializers import JobSerializer, BookingSerializer
+from .serializers import BookingSerializer, JobSerializer
 
 
 class JobPagination(PageNumberPagination):
+    """
+    Custom pagination for Job listings.
+    """
     page_size = 10
     page_size_query_param = 'page_size'
     max_page_size = 1000
@@ -51,7 +52,7 @@ class JobViewSet(viewsets.ModelViewSet):
         if trade_filter:
             queryset = queryset.filter(trade=trade_filter)
 
-        # --- 2. TEXT SEARCH (What?) ---
+        # --- 2. TEXT SEARCH ---
         if search_term:
             search_query = Q(title__icontains=search_term) | Q(description__icontains=search_term)
             # Also search for matching trade (e.g., "Painter" in text -> Trade PAINTER)
@@ -101,7 +102,7 @@ class JobViewSet(viewsets.ModelViewSet):
             except ValueError:
                 pass
 
-        # --- 4. LOCATION TEXT FILTER (The critical part!) ---
+        # --- 4. LOCATION TEXT FILTER ---
 
         # We filter by city name ONLY IF we haven't already successfully filtered by radius.
         if location_query and not used_radius:
@@ -273,6 +274,9 @@ class BookingViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def cancel(self, request, pk=None):
+        """
+        Cancels a booking.
+        """
         booking = self.get_object()
         user = request.user
 

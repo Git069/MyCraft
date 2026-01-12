@@ -1,24 +1,32 @@
 <script setup>
-// --- Imports ---
 import { ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import api from '@/api';
 import { useToastStore } from '@/stores/toast';
 import { useAuthStore } from '@/stores/auth';
+import api from '@/api';
 
-// --- Setup ---
+/* ==========================================================================
+   State & Setup
+   ========================================================================== */
+
 const router = useRouter();
 const toastStore = useToastStore();
 const authStore = useAuthStore();
 
-// --- State ---
 const email = ref('');
 const password = ref('');
 const password2 = ref('');
 const isLoading = ref(false);
 const passwordError = ref('');
 
-// --- Watchers ---
+/* ==========================================================================
+   Watchers
+   ========================================================================== */
+
+/**
+ * Validates the password length as the user types.
+ * Sets an error message if the password is too short.
+ */
 watch(password, (newPassword) => {
   if (newPassword.length > 0 && newPassword.length < 8) {
     passwordError.value = 'Das Passwort muss mindestens 8 Zeichen lang sein.';
@@ -27,17 +35,24 @@ watch(password, (newPassword) => {
   }
 });
 
-// --- Methods ---
+/* ==========================================================================
+   Methods
+   ========================================================================== */
 
 /**
  * Handles the registration process.
- * Validates passwords, calls the registration API, and auto-logs in the user.
+ * Validates that passwords match and meet requirements.
+ * Calls the registration API and automatically logs the user in upon success.
+ * Displays toast notifications for success or error states.
  */
 const handleRegister = async () => {
+  // Check if passwords match
   if (password.value !== password2.value) {
     toastStore.addToast('Die Passwörter stimmen nicht überein.', 'error');
     return;
   }
+
+  // Check if there are any existing validation errors
   if (passwordError.value) {
     toastStore.addToast(passwordError.value, 'error');
     return;
@@ -45,6 +60,7 @@ const handleRegister = async () => {
 
   isLoading.value = true;
   try {
+    // Attempt to register the user
     await api.register({
       username: email.value,
       email: email.value,
@@ -55,8 +71,8 @@ const handleRegister = async () => {
     // Auto-login after successful registration
     await authStore.login({ username: email.value, password: password.value });
     router.push({ name: 'Home' });
-
   } catch (error) {
+    // Handle registration errors
     const errorMessage = error.response?.data?.password?.[0] || 'Ein Fehler ist aufgetreten.';
     toastStore.addToast(errorMessage, 'error');
   } finally {
@@ -109,6 +125,7 @@ const handleRegister = async () => {
   align-items: center;
   min-height: 80vh;
 }
+
 .register-form-wrapper {
   width: 100%;
   max-width: 450px;
@@ -117,27 +134,33 @@ const handleRegister = async () => {
   border-radius: var(--border-radius);
   box-shadow: var(--box-shadow);
 }
+
 .form-header {
   margin-bottom: var(--spacing-lg);
 }
+
 .register-form {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-md);
 }
+
 .register-button {
   width: 100%;
   margin-top: var(--spacing-sm);
 }
+
 .form-footer {
   margin-top: var(--spacing-xl);
   text-align: center;
   font-size: var(--font-size-sm);
 }
+
 .login-link {
   font-weight: 600;
   color: var(--color-primary);
 }
+
 .validation-error {
   color: var(--color-error);
   font-size: 0.8rem;

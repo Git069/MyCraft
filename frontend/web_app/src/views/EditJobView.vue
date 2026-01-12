@@ -1,51 +1,60 @@
 <script setup>
-// --- Imports ---
 import { ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import api from '@/api';
 import { useToastStore } from '@/stores/toast';
+import api from '@/api';
 
-// --- Setup ---
+/* ==========================================================================
+   State & Setup
+   ========================================================================== */
+
 const route = useRoute();
 const router = useRouter();
 const toastStore = useToastStore();
 
-// --- State ---
 const job = ref(null);
 const loading = ref(true);
 const isSaving = ref(false);
 const jobId = route.params.id;
 
-// --- Methods ---
+/* ==========================================================================
+   Lifecycle Hooks
+   ========================================================================== */
 
 /**
- * Updates the job details via the API.
- * Redirects to the dashboard upon success.
+ * Fetches the job details when the component is mounted.
  */
-const handleUpdate = async () => {
-  isSaving.value = true;
-  try {
-    await api.updateJob(jobId, job.value);
-    toastStore.addToast("Auftrag erfolgreich aktualisiert.", "success");
-    router.push({ name: 'Dashboard' });
-  } catch (error) {
-    toastStore.addToast("Fehler beim Speichern.", "error");
-  } finally {
-    isSaving.value = false;
-  }
-};
-
-// --- Lifecycle Hooks ---
 onMounted(async () => {
   try {
     const response = await api.getJobDetails(jobId);
     job.value = response.data;
   } catch (error) {
-    toastStore.addToast("Auftrag konnte nicht geladen werden.", "error");
+    toastStore.addToast('Auftrag konnte nicht geladen werden.', 'error');
   } finally {
     loading.value = false;
   }
 });
+
+/* ==========================================================================
+   Methods
+   ========================================================================== */
+
+/**
+ * Updates the job details via the API.
+ * Redirects to the dashboard upon success or displays an error toast on failure.
+ */
+const handleUpdate = async () => {
+  isSaving.value = true;
+  try {
+    await api.updateJob(jobId, job.value);
+    toastStore.addToast('Auftrag erfolgreich aktualisiert.', 'success');
+    router.push({ name: 'Dashboard' });
+  } catch (error) {
+    toastStore.addToast('Fehler beim Speichern.', 'error');
+  } finally {
+    isSaving.value = false;
+  }
+};
 </script>
 
 <template>
@@ -85,9 +94,11 @@ onMounted(async () => {
   background: white;
   border-radius: 12px;
 }
+
 .form-group {
   margin-bottom: 16px;
 }
+
 .form-actions {
   display: flex;
   justify-content: flex-end;

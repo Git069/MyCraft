@@ -1,6 +1,7 @@
 <script setup>
-// --- Imports ---
-import { ref, onMounted, onUnmounted, computed, nextTick, watch } from 'vue';
+import {
+  ref, onMounted, onUnmounted, computed, nextTick, watch,
+} from 'vue';
 import { useRoute, RouterLink } from 'vue-router';
 import { useChatStore } from '@/stores/chatStore';
 import { useAuthStore } from '@/stores/auth';
@@ -10,56 +11,108 @@ import ReviewModal from '@/components/ReviewModal.vue';
 import UserAvatar from '@/components/UserAvatar.vue';
 import api from '@/api';
 
-// --- Setup ---
+/* ==========================================================================
+   State & Setup
+   ========================================================================== */
+
 const route = useRoute();
 const chatStore = useChatStore();
 const authStore = useAuthStore();
 const toastStore = useToastStore();
 
-// --- State ---
 const newMessage = ref('');
 const messageContainer = ref(null);
 const showOfferModal = ref(false);
 const offerData = ref({ price: null, description: '' });
 const showReviewModal = ref(false);
 const selectedJobForReview = ref(null);
+const loadingSuggestion = ref(false);
 
-// --- Computed Properties ---
+/* ==========================================================================
+   Computed Properties
+   ========================================================================== */
+
+/**
+ * Retrieves the currently logged-in user from the store.
+ * @returns {Object|null} The user object.
+ */
 const currentUser = computed(() => authStore.currentUser);
+
+/**
+ * Checks if the current user is a craftsman.
+ * @returns {boolean} True if the user is a craftsman.
+ */
 const isCraftsman = computed(() => authStore.isCraftsman);
 
+/**
+ * Retrieves the latest offer from the active conversation.
+ * @returns {Object|null} The latest offer object or null.
+ */
 const latestOffer = computed(() => {
   if (!chatStore.activeConversation) return null;
-  const offers = chatStore.activeConversation.messages.map(m => m.offer).filter(Boolean);
+  const offers = chatStore.activeConversation.messages.map((m) => m.offer).filter(Boolean);
   return offers.length > 0 ? offers[offers.length - 1] : null;
 });
 
-// --- Methods ---
-
-// ... bestehende refs (newMessage, messageContainer, etc.)
-const loadingSuggestion = ref(false); // NEU: Ladestatus
-
-// ... bestehende computed (currentUser, isCraftsman, etc.)
-
-// NEU: Hilfs-Computed Property, um die letzte Nachricht des ANDEREN Teilnehmers zu finden
+/**
+ * Finds the last message sent by the other participant in the conversation.
+ * Used for generating AI reply suggestions.
+ * @returns {string|null} The content of the last message or null.
+ */
 const lastPartnerMessage = computed(() => {
   if (!chatStore.activeConversation?.messages) return null;
   const msgs = chatStore.activeConversation.messages;
 
-  // Wir suchen rückwärts durch die Nachrichten
+  // Iterate backwards to find the last message from the partner
   for (let i = msgs.length - 1; i >= 0; i--) {
-    // Wenn der Sender NICHT ich selbst ist und es Textinhalt gibt
     if (msgs[i].sender !== currentUser.value?.id && msgs[i].content) {
       return msgs[i].content;
     }
   }
-  return null; // Keine Nachricht gefunden
+  return null;
 });
 
-// NEU: Handler für den KI-Button
+/* ==========================================================================
+   Watchers
+   ========================================================================== */
+
+/**
+ * Scrolls to the bottom of the chat window when new messages arrive.
+ */
+watch(() => chatStore.activeConversation?.messages, () => {
+  scrollToBottom();
+}, { deep: true });
+
+/* ==========================================================================
+   Lifecycle Hooks
+   ========================================================================== */
+
+/**
+ * Initializes the chat view by fetching conversations and selecting the active one if provided in the URL.
+ */
+onMounted(async () => {
+  const activeConvoId = parseInt(route.query.active_convo, 10);
+  await chatStore.fetchConversations(activeConvoId);
+  scrollToBottom();
+});
+
+/**
+ * Stops polling for new messages when the component is unmounted.
+ */
+onUnmounted(() => {
+  chatStore.stopPolling();
+});
+
+/* ==========================================================================
+   Methods
+   ========================================================================== */
+
+/**
+ * Generates an AI-suggested reply based on the last message from the partner.
+ */
 const handleSuggestReply = async () => {
   if (!lastPartnerMessage.value) {
-    toastStore.addToast("Keine Nachricht zum Antworten gefunden.", "info");
+    toastStore.addToast('Keine Nachricht zum Antworten gefunden.', 'info');
     return;
   }
 
@@ -67,11 +120,11 @@ const handleSuggestReply = async () => {
   try {
     const response = await api.suggestReply(lastPartnerMessage.value);
     if (response.data.suggestion) {
-      newMessage.value = response.data.suggestion; // Füllt das Eingabefeld
+      newMessage.value = response.data.suggestion; // Fills the input field
     }
   } catch (err) {
     console.error(err);
-    toastStore.addToast("Fehler beim Generieren des Vorschlags.", "error");
+    toastStore.addToast('Fehler beim Generieren des Vorschlags.', 'error');
   } finally {
     loadingSuggestion.value = false;
   }
@@ -98,7 +151,7 @@ const handleCreateOffer = async () => {
     offerData.value = { price: null, description: '' };
     scrollToBottom();
   } catch (err) {
-    toastStore.addToast("Fehler beim Erstellen des Angebots.", "error");
+    toastStore.addToast('Fehler beim Erstellen des Angebots.', 'error');
   }
 };
 
@@ -109,11 +162,11 @@ const handleCreateOffer = async () => {
 const handleAcceptOffer = async (offerId) => {
   try {
     const response = await api.acceptOffer(offerId);
-    const messageIndex = chatStore.activeConversation.messages.findIndex(m => m.offer?.id === response.data.id);
+    const messageIndex = chatStore.activeConversation.messages.findIndex((m) => m.offer?.id === response.data.id);
     if (messageIndex !== -1) chatStore.activeConversation.messages[messageIndex].offer.status = response.data.status;
-    toastStore.addToast("Angebot angenommen!", "success");
+    toastStore.addToast('Angebot angenommen!', 'success');
   } catch (err) {
-    toastStore.addToast("Fehler beim Annehmen des Angebots.", "error");
+    toastStore.addToast('Fehler beim Annehmen des Angebots.', 'error');
   }
 };
 
@@ -124,11 +177,11 @@ const handleAcceptOffer = async (offerId) => {
 const handleRejectOffer = async (offerId) => {
   try {
     const response = await api.rejectOffer(offerId);
-    const messageIndex = chatStore.activeConversation.messages.findIndex(m => m.offer?.id === response.data.id);
+    const messageIndex = chatStore.activeConversation.messages.findIndex((m) => m.offer?.id === response.data.id);
     if (messageIndex !== -1) chatStore.activeConversation.messages[messageIndex].offer.status = response.data.status;
-    toastStore.addToast("Angebot abgelehnt.", "info");
+    toastStore.addToast('Angebot abgelehnt.', 'info');
   } catch (err) {
-    toastStore.addToast("Fehler beim Ablehnen des Angebots.", "error");
+    toastStore.addToast('Fehler beim Ablehnen des Angebots.', 'error');
   }
 };
 
@@ -151,10 +204,10 @@ const handleCreateReview = async (reviewPayload) => {
     if (chatStore.activeConversation && chatStore.activeConversation.job_details.id === reviewPayload.job) {
       chatStore.activeConversation.job_details.review = response.data;
     }
-    toastStore.addToast("Bewertung erfolgreich abgegeben.", "success");
+    toastStore.addToast('Bewertung erfolgreich abgegeben.', 'success');
     showReviewModal.value = false;
   } catch (err) {
-    toastStore.addToast(err.response?.data?.detail || "Fehler beim Senden der Bewertung.", "error");
+    toastStore.addToast(err.response?.data?.detail || 'Fehler beim Senden der Bewertung.', 'error');
   }
 };
 
@@ -173,7 +226,7 @@ const scrollToBottom = async () => {
  */
 const getOtherParticipant = (convo) => {
   if (!convo?.participants_details) return { username: 'Unbekannt', id: null };
-  return convo.participants_details.find(p => p.id !== currentUser.value?.id) || { username: 'Unbekannt', id: null };
+  return convo.participants_details.find((p) => p.id !== currentUser.value?.id) || { username: 'Unbekannt', id: null };
 };
 
 /**
@@ -186,22 +239,6 @@ const getParticipantAvatar = (convo) => {
   if (other?.profile_picture) return `http://localhost:8000${other.profile_picture}`;
   return null;
 };
-
-// --- Watchers ---
-watch(() => chatStore.activeConversation?.messages, () => {
-  scrollToBottom();
-}, { deep: true });
-
-// --- Lifecycle Hooks ---
-onMounted(async () => {
-  const activeConvoId = parseInt(route.query.active_convo, 10);
-  await chatStore.fetchConversations(activeConvoId);
-  scrollToBottom();
-});
-
-onUnmounted(() => {
-  chatStore.stopPolling();
-});
 </script>
 
 <template>

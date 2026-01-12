@@ -1,23 +1,61 @@
 <script setup>
+/**
+ * BookingCard.vue
+ *
+ * A card component representing a booking.
+ * Displays booking details, status, and provides actions for contractors and customers.
+ */
+
+// --- Imports ---
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { useAuthStore } from '@/stores/auth'; // Store importieren
+import { useAuthStore } from '@/stores/auth';
 import { STATUS_TRANSLATIONS } from '@/constants';
 
+// --- Props & Emits ---
+
+/**
+ * Props definition.
+ * @property {Object} booking - The booking object containing details.
+ * @property {boolean} showControls - Whether to show action buttons (default: false).
+ */
 const props = defineProps({
   booking: { type: Object, required: true },
   showControls: { type: Boolean, default: false }
 });
 
+/**
+ * Emits definition.
+ * @emits review - Emitted when the user wants to review a completed booking.
+ * @emits mark-completed - Emitted when the contractor marks the booking as completed.
+ * @emits cancel - Emitted when the booking is cancelled.
+ */
 const emit = defineEmits(['review', 'mark-completed', 'cancel']);
-const router = useRouter();
-const authStore = useAuthStore(); // Store nutzen
 
-// Prüfen, ob der eingeloggte User der Handwerker ist
+// --- Reactive State ---
+
+const router = useRouter();
+const authStore = useAuthStore();
+
+/** @type {import('vue').Ref<boolean>} State for menu visibility (currently unused but preserved) */
+const isMenuOpen = ref(false);
+
+// --- Computed Properties ---
+
+/**
+ * Checks if the logged-in user is the contractor for this booking.
+ * @returns {boolean} True if the current user is the contractor.
+ */
 const isContractor = computed(() => {
   return authStore.user && authStore.user.id === props.booking.contractor;
 });
 
+/**
+ * Determines if the booking can be cancelled.
+ * Contractors can always cancel confirmed bookings.
+ * Customers can cancel if the scheduled date is more than 7 days away.
+ * @returns {boolean} True if cancellable.
+ */
 const isCancellable = computed(() => {
   if (props.booking.status !== 'CONFIRMED') return false;
   if (isContractor.value) return true; // Contractors can always cancel (or logic to be defined)
@@ -32,10 +70,9 @@ const isCancellable = computed(() => {
   return diffDays >= 7;
 });
 
-const isMenuOpen = ref(false);
-
-const goToDetail = () => router.push({ name: 'JobDetail', params: { id: props.booking.service.id } });
-
+/**
+ * Mapping of trade types to image URLs.
+ */
 const tradeImages = {
   PLUMBER: 'https://images.unsplash.com/photo-1581244277943-fe4a9c777189?auto=format&fit=crop&w=400&q=80',
   ELECTRICIAN: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=400&q=80',
@@ -45,18 +82,43 @@ const tradeImages = {
   OTHER: 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?auto=format&fit=crop&w=400&q=80'
 };
 
+/**
+ * Returns the image URL based on the trade type.
+ */
 const jobImage = computed(() => tradeImages[props.booking.service.trade] || tradeImages.OTHER);
+
+/**
+ * Formats the price as currency (EUR).
+ */
 const formattedPrice = computed(() => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(props.booking.price || 0));
+
+/**
+ * Formats the creation date.
+ */
 const formattedDate = computed(() => {
   if (!props.booking.created_at) return 'Datum unbekannt';
   return new Date(props.booking.created_at).toLocaleDateString('de-DE', { day: 'numeric', month: 'short' });
 });
+
+/**
+ * Returns the display title for the booking.
+ */
 const displayTitle = computed(() => props.booking.service.title);
 
+/**
+ * Translates the booking status code to a human-readable string.
+ */
 const translatedStatus = computed(() => {
   const status = props.booking.status;
   return STATUS_TRANSLATIONS[status] || status;
 });
+
+// --- Methods ---
+
+/**
+ * Navigates to the job detail page.
+ */
+const goToDetail = () => router.push({ name: 'JobDetail', params: { id: props.booking.service.id } });
 </script>
 
 <template>

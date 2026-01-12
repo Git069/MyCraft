@@ -1,13 +1,15 @@
 <script setup>
-// --- Imports ---
 import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '@/api';
 
-// --- Setup ---
+/* ==========================================================================
+   State & Setup
+   ========================================================================== */
+
 const router = useRouter();
 
-// --- State ---
+// UI State
 const isLoading = ref(false);
 const errorMessage = ref('');
 
@@ -25,7 +27,7 @@ const jobData = ref({
   city: '',
   price: null,
   lat: null,
-  lng: null
+  lng: null,
 });
 
 // Address Suggestions State
@@ -43,17 +45,19 @@ const tradeOptions = [
   { value: 'OTHER', text: 'Sonstiges', icon: '🔧' },
 ];
 
-// --- Computed Properties ---
+/* ==========================================================================
+   Computed Properties
+   ========================================================================== */
 
 /**
  * Calculates the progress percentage of the wizard.
+ * @returns {number} Percentage (0-100)
  */
-const progressPercentage = computed(() => {
-  return (currentStep.value / totalSteps) * 100;
-});
+const progressPercentage = computed(() => (currentStep.value / totalSteps) * 100);
 
 /**
  * Validates the current step to enable/disable the "Next" button.
+ * @returns {boolean} True if the current step is valid.
  */
 const isStepValid = computed(() => {
   switch (currentStep.value) {
@@ -70,10 +74,13 @@ const isStepValid = computed(() => {
   }
 });
 
-// --- Methods ---
+/* ==========================================================================
+   Methods
+   ========================================================================== */
 
 /**
  * Handles address input changes with debouncing to fetch suggestions.
+ * Fetches address suggestions from the API after a short delay.
  */
 const onAddressInput = () => {
   if (debounceTimeout) clearTimeout(debounceTimeout);
@@ -90,14 +97,14 @@ const onAddressInput = () => {
       addressSuggestions.value = response.data;
       showSuggestions.value = response.data.length > 0;
     } catch (e) {
-      console.error("Adress-Suche fehlgeschlagen", e);
+      console.error('Address search failed', e);
     }
   }, 400);
 };
 
 /**
  * Selects an address from the suggestions list and populates form fields.
- * @param {Object} suggestion - The selected address suggestion.
+ * @param {Object} suggestion - The selected address suggestion object.
  */
 const selectAddress = (suggestion) => {
   const street = suggestion.road || '';
@@ -116,6 +123,7 @@ const selectAddress = (suggestion) => {
 
 /**
  * Handles blur event on address input to hide suggestions with a delay.
+ * The delay ensures that a click on a suggestion is registered before the list hides.
  */
 const onBlurAddress = () => {
   setTimeout(() => {
@@ -124,7 +132,7 @@ const onBlurAddress = () => {
 };
 
 /**
- * Advances to the next step in the wizard or submits the form.
+ * Advances to the next step in the wizard or submits the form if on the last step.
  */
 const nextStep = () => {
   if (isStepValid.value && currentStep.value < totalSteps) {
@@ -153,6 +161,7 @@ const selectTrade = (tradeValue) => {
 
 /**
  * Submits the job creation form.
+ * Handles API call and navigation on success or error display on failure.
  */
 const handleSubmit = async () => {
   isLoading.value = true;
@@ -323,43 +332,187 @@ const handleSubmit = async () => {
 
 <style scoped>
 /* --- Layout --- */
-.wizard-container { display: flex; flex-direction: column; min-height: calc(100vh - 80px); background-color: white; }
-.progress-bar-container { height: 4px; background-color: #f0f0f0; width: 100%; }
-.progress-bar-fill { height: 100%; background-color: var(--color-primary); transition: width 0.3s ease; }
-.wizard-content { flex-grow: 1; max-width: 600px; width: 100%; margin: 0 auto; padding: 40px 24px 100px; }
+.wizard-container {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 80px);
+  background-color: white;
+}
+
+.progress-bar-container {
+  height: 4px;
+  background-color: #f0f0f0;
+  width: 100%;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background-color: var(--color-primary);
+  transition: width 0.3s ease;
+}
+
+.wizard-content {
+  flex-grow: 1;
+  max-width: 600px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 40px 24px 100px;
+}
 
 /* --- Header --- */
-.step-header { margin-bottom: 32px; }
-.step-indicator { font-size: 0.9rem; font-weight: 600; color: var(--color-text-light); text-transform: uppercase; letter-spacing: 0.05em; }
-.step-header h1 { font-size: 2rem; margin-top: 8px; color: var(--color-text); }
+.step-header {
+  margin-bottom: 32px;
+}
+
+.step-indicator {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-text-light);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.step-header h1 {
+  font-size: 2rem;
+  margin-top: 8px;
+  color: var(--color-text);
+}
 
 /* --- Trade Selection --- */
-.trade-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; }
-.trade-card { border: 2px solid var(--color-border); border-radius: 12px; padding: 24px; cursor: pointer; transition: all 0.2s ease; display: flex; flex-direction: column; align-items: center; text-align: center; }
-.trade-card:hover { border-color: var(--color-text-light); }
-.trade-card.selected { border-color: var(--color-primary); background-color: #f0f4ff; box-shadow: 0 0 0 1px var(--color-primary); }
-.trade-icon { font-size: 2.5rem; margin-bottom: 12px; }
-.trade-label { font-weight: 600; font-size: 0.95rem; }
+.trade-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 16px;
+}
+
+.trade-card {
+  border: 2px solid var(--color-border);
+  border-radius: 12px;
+  padding: 24px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.trade-card:hover {
+  border-color: var(--color-text-light);
+}
+
+.trade-card.selected {
+  border-color: var(--color-primary);
+  background-color: #f0f4ff;
+  box-shadow: 0 0 0 1px var(--color-primary);
+}
+
+.trade-icon {
+  font-size: 2.5rem;
+  margin-bottom: 12px;
+}
+
+.trade-label {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
 
 /* --- Forms --- */
-.form-group { margin-bottom: 24px; }
-.form-group label { display: block; font-weight: 600; margin-bottom: 8px; color: var(--color-text); }
-input, textarea { width: 100%; padding: 16px; font-size: 1.1rem; border: 1px solid var(--color-border); border-radius: 8px; transition: border-color 0.2s; }
-input:focus, textarea:focus { border-color: var(--color-text); outline: none; }
-.price-input-wrapper { position: relative; }
-.currency-symbol { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); font-weight: 600; color: var(--color-text-light); }
-.hint { font-size: 0.9rem; color: var(--color-text-light); margin-top: 8px; }
+.form-group {
+  margin-bottom: 24px;
+}
+
+.form-group label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--color-text);
+}
+
+input, textarea {
+  width: 100%;
+  padding: 16px;
+  font-size: 1.1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  transition: border-color 0.2s;
+}
+
+input:focus, textarea:focus {
+  border-color: var(--color-text);
+  outline: none;
+}
+
+.price-input-wrapper {
+  position: relative;
+}
+
+.currency-symbol {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-weight: 600;
+  color: var(--color-text-light);
+}
+
+.hint {
+  font-size: 0.9rem;
+  color: var(--color-text-light);
+  margin-top: 8px;
+}
 
 /* --- Footer --- */
-.wizard-footer { position: fixed; bottom: 0; left: 0; width: 100%; background-color: white; border-top: 1px solid var(--color-border); padding: 16px 0; z-index: 10; }
-.footer-content { display: flex; justify-content: space-between; align-items: center; }
-.back-btn { background: none; border: none; font-weight: 600; text-decoration: underline; cursor: pointer; font-size: 1rem; color: var(--color-text); }
-.next-btn { padding: 14px 32px; font-size: 1rem; }
-.next-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.error-message { background-color: #fff0f0; color: var(--color-error); padding: 12px; border-radius: 8px; margin-bottom: 24px; text-align: center; }
+.wizard-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background-color: white;
+  border-top: 1px solid var(--color-border);
+  padding: 16px 0;
+  z-index: 10;
+}
+
+.footer-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.back-btn {
+  background: none;
+  border: none;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 1rem;
+  color: var(--color-text);
+}
+
+.next-btn {
+  padding: 14px 32px;
+  font-size: 1rem;
+}
+
+.next-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.error-message {
+  background-color: #fff0f0;
+  color: var(--color-error);
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+  text-align: center;
+}
 
 /* --- Autocomplete --- */
-.relative-group { position: relative; }
+.relative-group {
+  position: relative;
+}
 
 .suggestions-dropdown {
   position: absolute;
@@ -369,7 +522,7 @@ input:focus, textarea:focus { border-color: var(--color-text); outline: none; }
   background: white;
   border: 1px solid var(--color-border);
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   z-index: 100;
   max-height: 250px;
   overflow-y: auto;
@@ -385,9 +538,25 @@ input:focus, textarea:focus { border-color: var(--color-text); outline: none; }
   transition: background-color 0.1s;
 }
 
-.suggestion-item:last-child { border-bottom: none; }
-.suggestion-item:hover { background-color: #f5f5f5; }
+.suggestion-item:last-child {
+  border-bottom: none;
+}
 
-.suggestion-main { font-weight: 600; font-size: 0.95rem; color: var(--color-text); }
-.suggestion-sub { font-size: 0.8rem; color: #777; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.suggestion-item:hover {
+  background-color: #f5f5f5;
+}
+
+.suggestion-main {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--color-text);
+}
+
+.suggestion-sub {
+  font-size: 0.8rem;
+  color: #777;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 </style>

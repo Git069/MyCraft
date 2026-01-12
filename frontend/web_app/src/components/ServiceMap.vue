@@ -1,10 +1,19 @@
 <script setup>
+/**
+ * ServiceMap.vue
+ *
+ * A map component using Leaflet to display service locations.
+ * Parses location data (GeoJSON or WKT) and renders markers with popups.
+ */
+
+// --- Imports ---
 import { computed } from 'vue';
 import { LMap, LTileLayer, LMarker, LPopup } from "@vue-leaflet/vue-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from 'leaflet';
 
-// --- LEAFLET ICON FIX (bleibt gleich) ---
+// --- Leaflet Icon Fix ---
+// Fixes missing marker icons in production builds by explicitly importing them.
 import iconUrl from 'leaflet/dist/images/marker-icon.png';
 import iconRetinaUrl from 'leaflet/dist/images/marker-icon-2x.png';
 import shadowUrl from 'leaflet/dist/images/marker-shadow.png';
@@ -19,8 +28,13 @@ const customIcon = L.icon({
   tooltipAnchor: [16, -28],
   shadowSize: [41, 41]
 });
-// ----------------------------------------
 
+// --- Props ---
+
+/**
+ * Props definition.
+ * @property {Array} services - List of service objects to display on the map.
+ */
 const props = defineProps({
   services: {
     type: Array,
@@ -28,43 +42,57 @@ const props = defineProps({
   }
 });
 
-// --- HELPER: Parse Location String OR Object ---
+// --- Methods ---
+
+/**
+ * Parses a location string or object into Leaflet-compatible coordinates [lat, lng].
+ * Supports GeoJSON objects and WKT (Well-Known Text) strings.
+ *
+ * @param {Object|string} location - The location data.
+ * @returns {Array<number>|null} Array [latitude, longitude] or null if invalid.
+ */
 const getLatLng = (location) => {
   if (!location) return null;
 
-  // Fall 1: GeoJSON Object { type: 'Point', coordinates: [lng, lat] }
+  // Case 1: GeoJSON Object { type: 'Point', coordinates: [lng, lat] }
   if (location.coordinates && Array.isArray(location.coordinates)) {
     return [location.coordinates[1], location.coordinates[0]];
   }
 
-  // Fall 2: WKT String "SRID=4326;POINT (13.1405 52.5304)"
+  // Case 2: WKT String "SRID=4326;POINT (13.1405 52.5304)"
   if (typeof location === 'string' && location.includes('POINT')) {
     try {
-      // Extrahiere den Teil in Klammern: "13.1405 52.5304"
+      // Extract the part inside parentheses: "13.1405 52.5304"
       const coordsText = location.match(/\(([^)]+)\)/)[1];
       const [lng, lat] = coordsText.split(' ').map(parseFloat);
 
       if (!isNaN(lat) && !isNaN(lng)) {
-        return [lat, lng]; // Leaflet will [Lat, Lng]
+        return [lat, lng]; // Leaflet expects [Lat, Lng]
       }
     } catch (e) {
-      console.warn("Konnte Location String nicht parsen:", location);
+      console.warn("Could not parse location string:", location);
     }
   }
 
   return null;
 };
 
+// --- Computed Properties ---
+
+/**
+ * Filters and maps the services to include parsed coordinates.
+ * Only services with valid coordinates are returned.
+ */
 const validServices = computed(() => {
   if (!props.services) return [];
 
   return props.services
     .map(service => {
-      // Versuche Koordinaten zu ermitteln
+      // Attempt to determine coordinates
       const latLng = getLatLng(service.location);
       return { ...service, latLng };
     })
-    .filter(service => service.latLng !== null); // Nur die behalten, wo wir Koordinaten gefunden haben
+    .filter(service => service.latLng !== null); // Keep only those where coordinates were found
 });
 </script>
 

@@ -1,4 +1,18 @@
 <script setup>
+/**
+ * DetailHighlight.vue
+ *
+ * A simple component to display a highlighted feature with an icon, title, and subtitle.
+ */
+
+// --- Props ---
+
+/**
+ * Props definition.
+ * @property {string} icon - The icon to display (emoji or character).
+ * @property {string} title - The main title text.
+ * @property {string} subtitle - The subtitle or description text.
+ */
 defineProps({
   icon: String,
   title: String,

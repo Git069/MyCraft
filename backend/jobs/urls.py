@@ -1,5 +1,6 @@
 from rest_framework.routers import DefaultRouter
-from .views import JobViewSet, BookingViewSet
+
+from .views import BookingViewSet, JobViewSet
 
 router = DefaultRouter()
 # Renaming 'jobs' to 'services' for clarity

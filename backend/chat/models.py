@@ -10,6 +10,7 @@ class Conversation(models.Model):
     """
     job = models.ForeignKey(Job, on_delete=models.CASCADE, related_name='conversations')
     participants = models.ManyToManyField(User, related_name='conversations')
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -24,17 +25,18 @@ class Offer(models.Model):
     """
     Represents a price offer made within a conversation.
     """
-    STATUS_CHOICES = (
-        ('PENDING', 'Pending'),
-        ('ACCEPTED', 'Accepted'),
-        ('REJECTED', 'Rejected'),
-    )
+    class Status(models.TextChoices):
+        PENDING = 'PENDING', 'Pending'
+        ACCEPTED = 'ACCEPTED', 'Accepted'
+        REJECTED = 'REJECTED', 'Rejected'
 
     conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name='offers')
     creator = models.ForeignKey(User, on_delete=models.CASCADE)
+
     price = models.DecimalField(max_digits=10, decimal_places=2)
     description = models.TextField(blank=True, null=True)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -48,12 +50,12 @@ class Message(models.Model):
     """
     conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name='messages')
     sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_messages')
+
     content = models.TextField(blank=True, null=True)  # Content can be empty if it's just an offer container
+    offer = models.OneToOneField(Offer, on_delete=models.CASCADE, null=True, blank=True, related_name='message')
+
     timestamp = models.DateTimeField(auto_now_add=True)
     is_read = models.BooleanField(default=False)
-
-    # Link to an offer if this message represents one
-    offer = models.OneToOneField(Offer, on_delete=models.CASCADE, null=True, blank=True, related_name='message')
 
     class Meta:
         ordering = ['timestamp']

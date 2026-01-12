@@ -1,125 +1,150 @@
 <script setup>
-// --- Imports ---
-import { ref, onMounted, computed } from 'vue';
-import api from '@/api';
-import JobCard from '@/components/JobCard.vue';
-import OrderCard from '@/components/OrderCard.vue';
+import { ref, computed, onMounted } from 'vue';
 import { useAuthStore } from '@/stores/auth';
 import { useToastStore } from '@/stores/toast';
+import JobCard from '@/components/JobCard.vue';
+import OrderCard from '@/components/OrderCard.vue';
+import api from '@/api';
 
-// --- Setup ---
+/* ==========================================================================
+   State & Setup
+   ========================================================================== */
+
 const authStore = useAuthStore();
 const toast = useToastStore();
 
-// --- State ---
 const myServices = ref([]);
 const myOrders = ref([]);
 const loading = ref(true);
 const activeTab = ref('services');
 
-// --- Computed Properties ---
+/* ==========================================================================
+   Computed Properties
+   ========================================================================== */
+
+/**
+ * Retrieves the currently logged-in user from the store.
+ * @returns {Object|null} The user object.
+ */
 const user = computed(() => authStore.currentUser);
 
-const activeOrders = computed(() => {
-  return myOrders.value.filter(o => ['PENDING', 'CONFIRMED'].includes(o.status));
-});
+/**
+ * Filters orders that are currently active (pending or confirmed).
+ * @returns {Array} List of active orders.
+ */
+const activeOrders = computed(() => myOrders.value.filter((o) => ['PENDING', 'CONFIRMED'].includes(o.status)));
 
-const pastOrders = computed(() => {
-  return myOrders.value.filter(o => ['COMPLETED', 'CANCELLED'].includes(o.status));
-});
+/**
+ * Filters orders that are in the past (completed or cancelled).
+ * @returns {Array} List of past orders.
+ */
+const pastOrders = computed(() => myOrders.value.filter((o) => ['COMPLETED', 'CANCELLED'].includes(o.status)));
 
-const pendingOrdersCount = computed(() => {
-  return myOrders.value.filter(o => o.status === 'PENDING' || o.status === 'CONFIRMED').length;
-});
+/**
+ * Counts the number of orders that require attention (pending or confirmed).
+ * @returns {number} Count of pending orders.
+ */
+const pendingOrdersCount = computed(() => myOrders.value.filter((o) => o.status === 'PENDING' || o.status === 'CONFIRMED').length);
 
-// --- Methods ---
+/* ==========================================================================
+   Lifecycle Hooks
+   ========================================================================== */
+
+/**
+ * Fetches initial data when the component is mounted.
+ */
+onMounted(fetchData);
+
+/* ==========================================================================
+   Methods
+   ========================================================================== */
 
 /**
  * Fetches user's services and orders from the API.
+ * Updates local state with the results.
  */
-const fetchData = async () => {
+async function fetchData() {
   loading.value = true;
   try {
     const [servicesRes, ordersRes] = await Promise.all([
       api.getMyServices(),
-      api.getMyOrders()
+      api.getMyOrders(),
     ]);
 
     // Assign Services
     if (Array.isArray(servicesRes.data)) {
-        myServices.value = [...servicesRes.data];
+      myServices.value = [...servicesRes.data];
     } else if (servicesRes.data && Array.isArray(servicesRes.data.results)) {
-        myServices.value = [...servicesRes.data.results];
+      myServices.value = [...servicesRes.data.results];
     } else {
-        myServices.value = [];
+      myServices.value = [];
     }
 
     // Assign Orders
     if (Array.isArray(ordersRes.data)) {
-        myOrders.value = [...ordersRes.data];
+      myOrders.value = [...ordersRes.data];
     } else if (ordersRes.data && Array.isArray(ordersRes.data.results)) {
-        myOrders.value = [...ordersRes.data.results];
+      myOrders.value = [...ordersRes.data.results];
     } else {
-        myOrders.value = [];
+      myOrders.value = [];
     }
-
   } catch (err) {
     console.error(err);
-    toast.addToast("Daten konnten nicht geladen werden", "error");
+    toast.addToast('Daten konnten nicht geladen werden', 'error');
   } finally {
     loading.value = false;
   }
-};
+}
 
 /**
  * Marks a booking as completed.
- * @param {number} bookingId - The ID of the booking.
+ * Prompts for confirmation before proceeding.
+ * @param {number} bookingId - The ID of the booking to complete.
  */
 const handleMarkCompleted = async (bookingId) => {
-  if (!confirm("Möchtest du diesen Auftrag wirklich als erledigt markieren?")) return;
+  if (!confirm('Möchtest du diesen Auftrag wirklich als erledigt markieren?')) return;
   try {
     await api.markBookingAsCompleted(bookingId);
-    toast.addToast("Auftrag erledigt!", "success");
+    toast.addToast('Auftrag erledigt!', 'success');
     await fetchData();
   } catch (err) {
-    toast.addToast("Fehler beim Speichern", "error");
+    toast.addToast('Fehler beim Speichern', 'error');
   }
 };
 
 /**
  * Cancels an order.
- * @param {number} bookingId - The ID of the booking.
+ * Prompts for confirmation before proceeding.
+ * @param {number} bookingId - The ID of the booking to cancel.
  */
 const handleCancelOrder = async (bookingId) => {
-  if (!confirm("Wirklich stornieren?")) return;
+  if (!confirm('Wirklich stornieren?')) return;
   try {
     await api.cancelBooking(bookingId);
-    toast.addToast("Storniert", "info");
+    toast.addToast('Storniert', 'info');
     await fetchData();
   } catch (err) {
-    toast.addToast("Fehler beim Stornieren", "error");
+    toast.addToast('Fehler beim Stornieren', 'error');
   }
 };
 
 /**
  * Deletes a service (job offer).
- * @param {number} serviceId - The ID of the service.
+ * Prompts for confirmation before proceeding.
+ * @param {number} serviceId - The ID of the service to delete.
  */
 const handleDeleteService = async (serviceId) => {
-  if (!confirm("Möchtest du dieses Inserat wirklich unwiderruflich löschen?")) return;
+  if (!confirm('Möchtest du dieses Inserat wirklich unwiderruflich löschen?')) return;
 
   try {
     await api.deleteService(serviceId);
-    toast.addToast("Inserat erfolgreich gelöscht", "success");
+    toast.addToast('Inserat erfolgreich gelöscht', 'success');
     fetchData();
   } catch (err) {
     console.error(err);
-    toast.addToast("Fehler beim Löschen des Inserats", "error");
+    toast.addToast('Fehler beim Löschen des Inserats', 'error');
   }
 };
-
-// --- Lifecycle Hooks ---
-onMounted(fetchData);
 </script>
 
 <template>
@@ -219,23 +244,131 @@ onMounted(fetchData);
 </template>
 
 <style scoped>
-.page-wrapper { padding-top: var(--spacing-lg); padding-bottom: var(--spacing-xxl); }
-.dashboard-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: var(--spacing-xl); flex-wrap: wrap; gap: 20px; position: relative; z-index: 100; }
-.subtitle { color: var(--color-text-light); }
-.create-btn { padding: 10px 20px; font-weight: 600; text-decoration: none; display: inline-block; }
-.tabs { display: flex; gap: 20px; border-bottom: 2px solid #eee; margin-bottom: 24px; }
-.tab-btn { background: none; border: none; padding: 12px 4px; font-size: 1rem; color: var(--color-text-light); cursor: pointer; position: relative; font-weight: 600; }
-.tab-btn.active { color: var(--color-primary); }
-.tab-btn.active::after { content: ''; position: absolute; bottom: -2px; left: 0; width: 100%; height: 2px; background-color: var(--color-primary); }
-.badge { background-color: var(--color-error); color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; margin-left: 8px; vertical-align: middle; }
-.dashboard-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 24px; width: 100%; }
-.section-group { margin-bottom: 40px; }
-.section-title { font-size: 1.2rem; font-weight: 700; color: var(--color-text); margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid #eee; }
-.past-section .section-title { color: var(--color-text-light); }
-.faded-grid { opacity: 0.75; transition: opacity 0.3s; }
-.faded-grid:hover { opacity: 1; }
-.info-message { padding: 20px 0; color: var(--color-text-light); font-style: italic; }
-.empty-state { text-align: center; padding: 40px; background: #f9f9f9; border-radius: 12px; color: var(--color-text-light); }
-.loading-state { text-align: center; padding: 40px; color: var(--color-text-light); }
-@media (max-width: 600px) { .dashboard-grid { grid-template-columns: 1fr; } }
+.page-wrapper {
+  padding-top: var(--spacing-lg);
+  padding-bottom: var(--spacing-xxl);
+}
+
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: var(--spacing-xl);
+  flex-wrap: wrap;
+  gap: 20px;
+  position: relative;
+  z-index: 100;
+}
+
+.subtitle {
+  color: var(--color-text-light);
+}
+
+.create-btn {
+  padding: 10px 20px;
+  font-weight: 600;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.tabs {
+  display: flex;
+  gap: 20px;
+  border-bottom: 2px solid #eee;
+  margin-bottom: 24px;
+}
+
+.tab-btn {
+  background: none;
+  border: none;
+  padding: 12px 4px;
+  font-size: 1rem;
+  color: var(--color-text-light);
+  cursor: pointer;
+  position: relative;
+  font-weight: 600;
+}
+
+.tab-btn.active {
+  color: var(--color-primary);
+}
+
+.tab-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background-color: var(--color-primary);
+}
+
+.badge {
+  background-color: var(--color-error);
+  color: white;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 24px;
+  width: 100%;
+}
+
+.section-group {
+  margin-bottom: 40px;
+}
+
+.section-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--color-text);
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #eee;
+}
+
+.past-section .section-title {
+  color: var(--color-text-light);
+}
+
+.faded-grid {
+  opacity: 0.75;
+  transition: opacity 0.3s;
+}
+
+.faded-grid:hover {
+  opacity: 1;
+}
+
+.info-message {
+  padding: 20px 0;
+  color: var(--color-text-light);
+  font-style: italic;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px;
+  background: #f9f9f9;
+  border-radius: 12px;
+  color: var(--color-text-light);
+}
+
+.loading-state {
+  text-align: center;
+  padding: 40px;
+  color: var(--color-text-light);
+}
+
+@media (max-width: 600px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}
 </style>

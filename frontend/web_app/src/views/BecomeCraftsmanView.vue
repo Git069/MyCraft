@@ -1,23 +1,25 @@
 <script setup>
-// --- Imports ---
 import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import api from '@/api';
 
-// --- Setup ---
+/* ==========================================================================
+   State & Setup
+   ========================================================================== */
+
 const authStore = useAuthStore();
 const router = useRouter();
 
-// --- State ---
+// UI State
 const isLoading = ref(false);
 const errorMessage = ref('');
 const showForm = ref(false);
 
 // Calculator State
 const hoursPerWeek = ref(10);
-const hourlyRate = 50;
-const weeksPerMonth = 4.2;
+const hourlyRate = 50; // Constant for calculation
+const weeksPerMonth = 4.2; // Constant for calculation
 
 // Form State
 const profileData = ref({
@@ -28,18 +30,28 @@ const profileData = ref({
   bio: '',
 });
 
-// --- Computed Properties ---
+/* ==========================================================================
+   Computed Properties
+   ========================================================================== */
 
 /**
  * Calculates the estimated monthly earnings based on the selected hours per week.
- * Returns a formatted currency string.
+ * Returns a formatted currency string (EUR).
+ *
+ * @returns {string} Formatted earnings string
  */
 const estimatedEarnings = computed(() => {
   const earnings = hoursPerWeek.value * hourlyRate * weeksPerMonth;
-  return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(earnings);
+  return new Intl.NumberFormat('de-DE', {
+    style: 'currency',
+    currency: 'EUR',
+    maximumFractionDigits: 0,
+  }).format(earnings);
 });
 
-// --- Methods ---
+/* ==========================================================================
+   Methods
+   ========================================================================== */
 
 /**
  * Initiates the process to become a craftsman.
@@ -69,14 +81,18 @@ const handleSubmit = async () => {
   errorMessage.value = '';
   try {
     await api.becomeCraftsman(profileData.value);
+    // Refresh user data to update roles/permissions
     await authStore.fetchUser();
     router.push({ name: 'JobMarketplace' });
   } catch (error) {
+    // Handle validation errors from the backend
     if (error.response && error.response.data) {
       const errors = error.response.data;
+      // Display the first error found
       const firstErrorKey = Object.keys(errors)[0];
       errorMessage.value = `${firstErrorKey}: ${errors[firstErrorKey][0]}`;
     } else {
+      // Fallback generic error message
       errorMessage.value = 'Ein Fehler ist aufgetreten. Bitte versuchen Sie es später erneut.';
     }
   } finally {

@@ -7,7 +7,6 @@
  * and get AI-based price advice.
  */
 
-// --- Imports ---
 import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter, RouterLink } from 'vue-router';
 
@@ -17,12 +16,14 @@ import api from '@/api';
 import DetailHighlight from '@/components/DetailHighlight.vue';
 import { STATUS_TRANSLATIONS, TRADE_TRANSLATIONS } from '@/constants';
 
-// --- Setup ---
+/* ==========================================================================
+   State & Setup
+   ========================================================================== */
+
 const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
 
-// --- State ---
 const jobId = route.params.id;
 
 // Job Data
@@ -42,23 +43,26 @@ const bookingError = ref(null);
 const aiAdvice = ref(null);
 const loadingAi = ref(false);
 
-// --- Constants ---
+// Constants
 const tradeImages = {
   PLUMBER: 'https://images.unsplash.com/photo-1581244277943-fe4a9c777189?auto=format&fit=crop&w=800&q=80',
   ELECTRICIAN: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=800&q=80',
   PAINTER: 'https://images.unsplash.com/photo-1589939705384-5185137a7f0f?auto=format&fit=crop&w=800&q=80',
   CARPENTER: 'https://images.unsplash.com/photo-1611021061285-19a87a1964e2?auto=format&fit=crop&w=800&q=80',
   GARDENER: 'https://images.unsplash.com/photo-1558904541-efa843a96f01?auto=format&fit=crop&w=800&q=80',
-  OTHER: 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?auto=format&fit=crop&w=800&q=80'
+  OTHER: 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?auto=format&fit=crop&w=800&q=80',
 };
 
-// --- Computed Properties ---
+/* ==========================================================================
+   Computed Properties
+   ========================================================================== */
 
 const isLoggedIn = computed(() => authStore.isLoggedIn);
 const currentUser = computed(() => authStore.currentUser);
 
 /**
  * Calculates today's date in YYYY-MM-DD format for the date input min attribute.
+ * @returns {string} Date string in YYYY-MM-DD format.
  */
 const minDate = computed(() => {
   const today = new Date();
@@ -68,6 +72,7 @@ const minDate = computed(() => {
 /**
  * Determines if the current user can contact the job owner.
  * Users cannot contact themselves or if they are not logged in (though UI handles login prompt).
+ * @returns {boolean} True if contact is allowed.
  */
 const canContact = computed(() => {
   if (!isLoggedIn.value || !job.value) return false;
@@ -76,41 +81,62 @@ const canContact = computed(() => {
 
 /**
  * Selects a hero image based on the job's trade category.
+ * @returns {string} URL of the hero image.
  */
 const heroImage = computed(() => {
   if (!job.value) return tradeImages.OTHER;
   return tradeImages[job.value.trade] || tradeImages.OTHER;
 });
 
+/**
+ * Translates the job status code to a human-readable string.
+ * @returns {string} Translated status.
+ */
 const translatedStatus = computed(() => {
   if (!job.value) return '';
   const status = job.value.status;
   return STATUS_TRANSLATIONS[status] || status;
 });
 
+/**
+ * Translates the trade code to a human-readable string.
+ * @returns {string} Translated trade name.
+ */
 const translatedTrade = computed(() => {
   if (!job.value) return '';
   const trade = job.value.trade;
   return TRADE_TRANSLATIONS[trade] || trade;
 });
 
-// --- Methods ---
+/* ==========================================================================
+   Lifecycle Hooks
+   ========================================================================== */
+
+/**
+ * Fetches job details when the component is mounted.
+ */
+onMounted(fetchJobDetails);
+
+/* ==========================================================================
+   Methods
+   ========================================================================== */
 
 /**
  * Fetches the job details from the API.
+ * Updates the job state or sets an error message.
  */
-const fetchJobDetails = async () => {
+async function fetchJobDetails() {
   loading.value = true;
   error.value = null;
   try {
     const response = await api.getJobDetails(jobId);
     job.value = response.data;
   } catch (err) {
-    error.value = "Fehler: Der Auftrag konnte nicht geladen werden.";
+    error.value = 'Fehler: Der Auftrag konnte nicht geladen werden.';
   } finally {
     loading.value = false;
   }
-};
+}
 
 /**
  * Formats a numeric price into a localized currency string.
@@ -125,6 +151,7 @@ const formatPrice = (price) => {
 /**
  * Handles the booking process.
  * Creates a booking for the current job at the selected date.
+ * Redirects to "My Bookings" on success.
  */
 const handleBooking = async () => {
   if (!bookingDate.value) return;
@@ -137,16 +164,16 @@ const handleBooking = async () => {
     // The price is automatically taken from the service in the backend.
     await api.createBooking({
       service_id: job.value.id,
-      scheduled_date: bookingDate.value
+      scheduled_date: bookingDate.value,
     });
 
     // Redirect to "My Bookings" on success
     router.push({ name: 'MyBookings' });
   } catch (err) {
     // Handle backend errors (e.g., date already taken)
-    bookingError.value = err.response?.data?.scheduled_date?.[0] ||
-                         err.response?.data?.non_field_errors?.[0] ||
-                         "Buchung fehlgeschlagen.";
+    bookingError.value = err.response?.data?.scheduled_date?.[0]
+                         || err.response?.data?.non_field_errors?.[0]
+                         || 'Buchung fehlgeschlagen.';
   } finally {
     isBooking.value = false;
   }
@@ -154,6 +181,7 @@ const handleBooking = async () => {
 
 /**
  * Initiates a conversation with the job owner.
+ * Redirects to the Inbox with the new conversation active.
  */
 const handleContact = async () => {
   if (!canContact.value) return;
@@ -165,7 +193,7 @@ const handleContact = async () => {
     const conversationId = response.data.id;
     router.push({ name: 'Inbox', query: { active_convo: conversationId } });
   } catch (err) {
-    error.value = err.response?.data?.detail || "Konversation konnte nicht gestartet werden.";
+    error.value = err.response?.data?.detail || 'Konversation konnte nicht gestartet werden.';
   } finally {
     isStartingConversation.value = false;
   }
@@ -173,6 +201,7 @@ const handleContact = async () => {
 
 /**
  * Requests AI-based price advice for the current job.
+ * Updates the aiAdvice state with the result.
  */
 const getPriceAdvice = async () => {
   loadingAi.value = true;
@@ -182,14 +211,11 @@ const getPriceAdvice = async () => {
     aiAdvice.value = response.data.advice;
   } catch (err) {
     console.error(err);
-    aiAdvice.value = "Entschuldigung, die KI ist gerade nicht erreichbar.";
+    aiAdvice.value = 'Entschuldigung, die KI ist gerade nicht erreichbar.';
   } finally {
     loadingAi.value = false;
   }
 };
-
-// --- Lifecycle Hooks ---
-onMounted(fetchJobDetails);
 </script>
 
 <template>
@@ -235,7 +261,7 @@ onMounted(fetchJobDetails);
             <p>{{ job.description }}</p>
           </section>
 
-           <div class="divider"></div>
+          <div class="divider"></div>
 
           <section class="ai-section">
             <div class="ai-header">
@@ -320,35 +346,155 @@ onMounted(fetchJobDetails);
 </template>
 
 <style scoped>
-.detail-page-wrapper { padding: var(--spacing-lg) 0; }
-.image-hero-section { width: 100%; max-height: 400px; overflow: hidden; border-radius: 16px; margin-bottom: var(--spacing-xl); }
-.hero-image { width: 100%; height: 100%; object-fit: cover; }
-.main-content-grid { display: grid; grid-template-columns: 1fr; gap: var(--spacing-xxl); }
-@media (min-width: 992px) { .main-content-grid { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); } }
-.job-header h1 { font-size: 2rem; font-weight: 800; margin-top: 0; margin-bottom: var(--spacing-xs); text-transform: capitalize; }
-.meta-info { font-size: 1rem; color: var(--color-text-light); }
-.divider { border-bottom: 1px solid var(--color-border); margin: 32px 0; }
-.contractor-section { display: flex; align-items: center; gap: 16px; padding: 8px 0; }
-.avatar-placeholder { width: 56px; height: 56px; border-radius: 50%; background-color: #f1f1f1; flex-shrink: 0; }
-.contractor-text .title { display: block; font-weight: 600; font-size: 1.1rem; }
-.contractor-text .subtitle { font-size: 0.9rem; color: var(--color-text-light); }
-.highlights-section { display: grid; grid-template-columns: 1fr; gap: 24px; }
-@media (min-width: 768px) { .highlights-section { grid-template-columns: 1fr 1fr; } }
-.description-section h2 { font-size: 1.5rem; margin-top: 0; margin-bottom: var(--spacing-md); }
-.description-section p { line-height: 1.7; white-space: pre-wrap; }
+.detail-page-wrapper {
+  padding: var(--spacing-lg) 0;
+}
+
+.image-hero-section {
+  width: 100%;
+  max-height: 400px;
+  overflow: hidden;
+  border-radius: 16px;
+  margin-bottom: var(--spacing-xl);
+}
+
+.hero-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.main-content-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--spacing-xxl);
+}
+
+@media (min-width: 992px) {
+  .main-content-grid {
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  }
+}
+
+.job-header h1 {
+  font-size: 2rem;
+  font-weight: 800;
+  margin-top: 0;
+  margin-bottom: var(--spacing-xs);
+  text-transform: capitalize;
+}
+
+.meta-info {
+  font-size: 1rem;
+  color: var(--color-text-light);
+}
+
+.divider {
+  border-bottom: 1px solid var(--color-border);
+  margin: 32px 0;
+}
+
+.contractor-section {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 0;
+}
+
+.avatar-placeholder {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background-color: #f1f1f1;
+  flex-shrink: 0;
+}
+
+.contractor-text .title {
+  display: block;
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.contractor-text .subtitle {
+  font-size: 0.9rem;
+  color: var(--color-text-light);
+}
+
+.highlights-section {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+}
+
+@media (min-width: 768px) {
+  .highlights-section {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.description-section h2 {
+  font-size: 1.5rem;
+  margin-top: 0;
+  margin-bottom: var(--spacing-md);
+}
+
+.description-section p {
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
 
 /* Right Column & Card Styles */
-.right-column { position: relative; }
-.action-card { background-color: white; border: 1px solid var(--color-border); border-radius: 12px; padding: 24px; box-shadow: 0 6px 16px rgba(0,0,0,0.12); position: sticky; top: 120px; }
-.price-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 24px; }
-.price { font-size: 1.5rem; font-weight: 800; }
-.price-label { color: var(--color-text-light); font-size: 1rem; }
+.right-column {
+  position: relative;
+}
 
-.action-body { display: flex; flex-direction: column; gap: 12px; }
+.action-card {
+  background-color: white;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+  position: sticky;
+  top: 120px;
+}
+
+.price-header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.price {
+  font-size: 1.5rem;
+  font-weight: 800;
+}
+
+.price-label {
+  color: var(--color-text-light);
+  font-size: 1rem;
+}
+
+.action-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
 
 /* Booking Widget Styles */
-.booking-widget { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
-.date-label { font-size: 0.9rem; font-weight: 600; color: var(--color-text); }
+.booking-widget {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.date-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
 .date-input {
   padding: 10px;
   border: 1px solid #ddd;
@@ -358,9 +504,27 @@ onMounted(fetchJobDetails);
   width: 100%;
 }
 
-.primary-action { width: 100%; font-size: 1rem; padding: 14px; font-weight: 600; cursor: pointer; border: none; background-color: var(--color-primary); color: white; border-radius: 8px; transition: background-color 0.2s; }
-.primary-action:hover { background-color: var(--color-primary-dark, #0056b3); }
-.primary-action:disabled { background-color: #ccc; cursor: not-allowed; }
+.primary-action {
+  width: 100%;
+  font-size: 1rem;
+  padding: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  background-color: var(--color-primary);
+  color: white;
+  border-radius: 8px;
+  transition: background-color 0.2s;
+}
+
+.primary-action:hover {
+  background-color: var(--color-primary-dark, #0056b3);
+}
+
+.primary-action:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
 
 .secondary-action {
   width: 100%;
@@ -379,22 +543,118 @@ onMounted(fetchJobDetails);
   background-color: var(--color-primary-dark, #0056b3);
 }
 
-.separator { text-align: center; font-size: 0.85rem; color: #999; margin: 4px 0; }
-.error-message { color: var(--color-error); font-size: 0.85rem; margin-top: 4px; }
+.separator {
+  text-align: center;
+  font-size: 0.85rem;
+  color: #999;
+  margin: 4px 0;
+}
 
-.action-footer { text-align: center; font-size: 0.8rem; color: var(--color-text-light); margin-top: 16px; line-height: 1.4; }
-.own-job-info { text-align: center; color: #666; font-style: italic; }
+.error-message {
+  color: var(--color-error);
+  font-size: 0.85rem;
+  margin-top: 4px;
+}
+
+.action-footer {
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--color-text-light);
+  margin-top: 16px;
+  line-height: 1.4;
+}
+
+.own-job-info {
+  text-align: center;
+  color: #666;
+  font-style: italic;
+}
 
 /* AI Section Styles */
-.ai-section { background: linear-gradient(to right, #f8f9fa, #e3f2fd); padding: 24px; border-radius: 12px; border: 1px solid #d1e7dd; margin-top: 20px; }
-.ai-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-.ai-header h3 { margin: 0; font-size: 1.2rem; font-weight: 700; color: #333; }
-.beta-badge { background: #666; color: white; font-size: 0.7rem; padding: 2px 8px; border-radius: 12px; font-weight: 600; text-transform: uppercase; }
-.ai-intro { font-size: 0.95rem; color: #555; margin-bottom: 20px; line-height: 1.5; }
-.ai-btn { background-color: white; border: 1px solid #0d6efd; color: #0d6efd; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-.ai-btn:hover:not(:disabled) { background-color: #0d6efd; color: white; }
-.ai-btn:disabled { opacity: 0.6; cursor: wait; }
-.result-bubble { background: white; padding: 16px; border-radius: 8px; border-left: 4px solid #0d6efd; font-style: italic; color: #333; line-height: 1.6; box-shadow: 0 2px 8px rgba(0,0,0,0.05); white-space: pre-wrap; }
-.retry-link { background: none; border: none; color: #666; font-size: 0.85rem; text-decoration: underline; cursor: pointer; margin-top: 12px; display: block; }
-.retry-link:hover { color: #333; }
+.ai-section {
+  background: linear-gradient(to right, #f8f9fa, #e3f2fd);
+  padding: 24px;
+  border-radius: 12px;
+  border: 1px solid #d1e7dd;
+  margin-top: 20px;
+}
+
+.ai-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.ai-header h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #333;
+}
+
+.beta-badge {
+  background: #666;
+  color: white;
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.ai-intro {
+  font-size: 0.95rem;
+  color: #555;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+.ai-btn {
+  background-color: white;
+  border: 1px solid #0d6efd;
+  color: #0d6efd;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.ai-btn:hover:not(:disabled) {
+  background-color: #0d6efd;
+  color: white;
+}
+
+.ai-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.result-bubble {
+  background: white;
+  padding: 16px;
+  border-radius: 8px;
+  border-left: 4px solid #0d6efd;
+  font-style: italic;
+  color: #333;
+  line-height: 1.6;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  white-space: pre-wrap;
+}
+
+.retry-link {
+  background: none;
+  border: none;
+  color: #666;
+  font-size: 0.85rem;
+  text-decoration: underline;
+  cursor: pointer;
+  margin-top: 12px;
+  display: block;
+}
+
+.retry-link:hover {
+  color: #333;
+}
 </style>

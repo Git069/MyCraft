@@ -1,5 +1,7 @@
 from django.contrib.gis import admin
-from .models import Job, Booking
+
+from .models import Booking, Job
+
 
 @admin.register(Job)
 class JobAdmin(admin.OSMGeoAdmin):
@@ -9,14 +11,18 @@ class JobAdmin(admin.OSMGeoAdmin):
     list_display = ('title', 'contractor', 'status', 'created_at')
     list_filter = ('status', 'trade')
     search_fields = ('title', 'description', 'city')
-    
+
     # Configure the map
-    default_lon = 10.4515 # Center of Germany
+    default_lon = 10.4515  # Center of Germany
     default_lat = 51.1657
     default_zoom = 6
 
+
 @admin.register(Booking)
 class BookingAdmin(admin.ModelAdmin):
+    """
+    Admin view for Bookings.
+    """
     list_display = ('service', 'customer', 'contractor', 'status', 'price', 'created_at')
     list_filter = ('status',)
     search_fields = ('service__title', 'customer__username', 'contractor__username')

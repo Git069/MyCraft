@@ -1,15 +1,16 @@
 <script setup>
-// --- Imports ---
 import { ref, onMounted, computed } from 'vue';
-import api from '@/api';
+import { useToastStore } from '@/stores/toast';
 import BookingCard from '@/components/BookingCard.vue';
 import ReviewModal from '@/components/ReviewModal.vue';
-import { useToastStore } from '@/stores/toast';
+import api from '@/api';
 
-// --- Setup ---
+/* ==========================================================================
+   State & Setup
+   ========================================================================== */
+
 const toast = useToastStore();
 
-// --- State ---
 const bookings = ref([]);
 const loading = ref(true);
 const error = ref(null);
@@ -18,36 +19,46 @@ const error = ref(null);
 const showReviewModal = ref(false);
 const reviewTarget = ref(null);
 
-// --- Computed Properties ---
+/* ==========================================================================
+   Computed Properties
+   ========================================================================== */
 
 /**
  * Filters bookings to show only active ones.
  * Active bookings are those that are not cancelled and not completed with a review.
+ * @returns {Array} List of active bookings.
  */
-const activeBookings = computed(() => {
-  return bookings.value.filter(b => {
-    if (b.status === 'CANCELLED') return false;
-    if (b.status === 'COMPLETED' && b.review) return false;
-    return true;
-  });
-});
+const activeBookings = computed(() => bookings.value.filter((b) => {
+  if (b.status === 'CANCELLED') return false;
+  if (b.status === 'COMPLETED' && b.review) return false;
+  return true;
+}));
 
 /**
  * Filters bookings to show only past ones.
  * Past bookings are those that are cancelled or completed with a review.
+ * @returns {Array} List of past bookings.
  */
-const pastBookings = computed(() => {
-  return bookings.value.filter(b => {
-    return b.status === 'CANCELLED' || (b.status === 'COMPLETED' && b.review);
-  });
-});
+const pastBookings = computed(() => bookings.value.filter((b) => b.status === 'CANCELLED' || (b.status === 'COMPLETED' && b.review)));
 
-// --- Methods ---
+/* ==========================================================================
+   Lifecycle Hooks
+   ========================================================================== */
+
+/**
+ * Fetches bookings when the component is mounted.
+ */
+onMounted(fetchBookings);
+
+/* ==========================================================================
+   Methods
+   ========================================================================== */
 
 /**
  * Fetches the user's bookings from the API.
+ * Updates the bookings state with the results.
  */
-const fetchBookings = async () => {
+async function fetchBookings() {
   loading.value = true;
   error.value = null;
   try {
@@ -55,25 +66,25 @@ const fetchBookings = async () => {
     bookings.value = response.data;
   } catch (err) {
     console.error(err);
-    error.value = "Deine Buchungen konnten nicht geladen werden.";
+    error.value = 'Deine Buchungen konnten nicht geladen werden.';
   } finally {
     loading.value = false;
   }
-};
+}
 
 /**
  * Cancels a booking after user confirmation.
  * @param {number} bookingId - The ID of the booking to cancel.
  */
 const handleCancel = async (bookingId) => {
-  if (!confirm("Möchtest du diese Buchung wirklich stornieren?")) return;
+  if (!confirm('Möchtest du diese Buchung wirklich stornieren?')) return;
 
   try {
     await api.cancelBooking(bookingId);
-    toast.addToast("Buchung erfolgreich storniert", "success");
+    toast.addToast('Buchung erfolgreich storniert', 'success');
     await fetchBookings();
   } catch (err) {
-    toast.addToast("Fehler beim Stornieren der Buchung", "error");
+    toast.addToast('Fehler beim Stornieren der Buchung', 'error');
   }
 };
 
@@ -84,34 +95,31 @@ const handleCancel = async (bookingId) => {
 const openReviewModal = (booking) => {
   reviewTarget.value = {
     id: booking.id,
-    title: booking.service.title
+    title: booking.service.title,
   };
   showReviewModal.value = true;
 };
 
 /**
  * Submits a review for a booking.
- * @param {Object} payload - The review data.
+ * @param {Object} payload - The review data containing job ID, rating, and comment.
  */
 const handleReviewSubmit = async (payload) => {
   try {
     await api.createReview({
       booking: payload.job,
       rating: payload.rating,
-      comment: payload.comment
+      comment: payload.comment,
     });
 
-    toast.addToast("Bewertung erfolgreich gesendet!", "success");
+    toast.addToast('Bewertung erfolgreich gesendet!', 'success');
     showReviewModal.value = false;
     await fetchBookings();
   } catch (err) {
-    const msg = err.response?.data?.detail || "Fehler beim Senden der Bewertung.";
-    toast.addToast(msg, "error");
+    const msg = err.response?.data?.detail || 'Fehler beim Senden der Bewertung.';
+    toast.addToast(msg, 'error');
   }
 };
-
-// --- Lifecycle Hooks ---
-onMounted(fetchBookings);
 </script>
 
 <template>

@@ -1,37 +1,49 @@
 <script setup>
+/**
+ * Vue Core Imports
+ */
 import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { RouterLink, RouterView, useRouter } from 'vue-router';
-import AppLogo from '@/assets/logo.svg';
-import { useAuthStore } from '@/stores/auth';
-import ToastContainer from '@/components/ToastContainer.vue';
-import UserAvatar from '@/components/UserAvatar.vue'; // Import UserAvatar
 
+/**
+ * Third-Party Imports
+ */
+import { RouterLink, RouterView, useRouter } from 'vue-router';
+
+/**
+ * Local Component Imports
+ */
+import ToastContainer from '@/components/ToastContainer.vue';
+import UserAvatar from '@/components/UserAvatar.vue';
+
+/**
+ * Store & Utils Imports
+ */
+import { useAuthStore } from '@/stores/auth';
+import AppLogo from '@/assets/logo.svg';
+
+/**
+ * Setup & Configuration
+ */
 const authStore = useAuthStore();
 const router = useRouter();
 
+/**
+ * Reactive State
+ */
+const isMenuOpen = ref(false);
+const menuRef = ref(null);
+
+/**
+ * Computed Properties
+ */
 const isLoggedIn = computed(() => authStore.isLoggedIn);
 const isCraftsman = computed(() => authStore.isCraftsman);
 const user = computed(() => authStore.currentUser);
 
-const isMenuOpen = ref(false);
-const menuRef = ref(null);
-
-const toggleMenu = () => {
-  isMenuOpen.value = !isMenuOpen.value;
-};
-
-const closeMenu = (event) => {
-  if (menuRef.value && !menuRef.value.contains(event.target)) {
-    isMenuOpen.value = false;
-  }
-};
-
-const handleLogout = () => {
-  authStore.logout();
-  isMenuOpen.value = false;
-  router.push({ name: 'Home' });
-};
-
+/**
+ * Computes the full URL for the user's profile picture.
+ * Returns null if the user has no profile picture.
+ */
 const fullImageUrl = computed(() => {
   if (user.value?.profile_picture) {
     return `http://localhost:8000${user.value.profile_picture}`;
@@ -39,6 +51,39 @@ const fullImageUrl = computed(() => {
   return null;
 });
 
+/**
+ * Methods
+ */
+
+/**
+ * Toggles the visibility of the user menu.
+ */
+const toggleMenu = () => {
+  isMenuOpen.value = !isMenuOpen.value;
+};
+
+/**
+ * Closes the user menu if the click event occurred outside the menu element.
+ * @param {Event} event - The DOM click event.
+ */
+const closeMenu = (event) => {
+  if (menuRef.value && !menuRef.value.contains(event.target)) {
+    isMenuOpen.value = false;
+  }
+};
+
+/**
+ * Logs the user out, closes the menu, and redirects to the Home page.
+ */
+const handleLogout = () => {
+  authStore.logout();
+  isMenuOpen.value = false;
+  router.push({ name: 'Home' });
+};
+
+/**
+ * Lifecycle Hooks
+ */
 onMounted(() => {
   document.addEventListener('click', closeMenu);
 });
@@ -82,7 +127,7 @@ onUnmounted(() => {
               <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="presentation" focusable="false" style="display: block; fill: none; height: 16px; width: 16px; stroke: currentcolor; stroke-width: 3; overflow: visible;"><g fill="none"><path d="m2 16h28"></path><path d="m2 24h28"></path><path d="m2 8h28"></path></g></svg>
             </div>
 
-            <!-- Use UserAvatar component -->
+            <!-- UserAvatar component -->
             <UserAvatar :src="fullImageUrl" :name="user?.username || ''" :size="30" />
           </button>
 
@@ -138,9 +183,10 @@ onUnmounted(() => {
 <style scoped>
 /* Styles remain largely the same, removed old avatar styles */
 
-header, nav, .navbar { /* Passe den Selektor an deine Klasse an, oft 'app-header' oder ähnlich */
-  position: relative; /* Oder sticky/fixed */
-  z-index: 3000; /* Muss höher sein als Dropdowns (2000) und Karte */
+/* Adjust the selector to match your class, often 'app-header' or similar */
+header, nav, .navbar {
+  position: relative; /* Or sticky/fixed */
+  z-index: 3000; /* Must be higher than Dropdowns (2000) and Map */
 }
 
 .main-header {

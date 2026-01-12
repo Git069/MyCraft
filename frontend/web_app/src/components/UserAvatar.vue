@@ -1,12 +1,35 @@
 <script setup>
+/**
+ * UserAvatar.vue
+ *
+ * A component to display a user's avatar.
+ * Shows the profile image if available, otherwise initials or a placeholder icon.
+ */
+
+// --- Imports ---
 import { computed } from 'vue';
 
+// --- Props ---
+
+/**
+ * Props definition.
+ * @property {string|null} src - The URL of the avatar image.
+ * @property {string} name - The name of the user (used for initials).
+ * @property {string|number} size - The size of the avatar in pixels (default: 40).
+ */
 const props = defineProps({
   src: { type: String, default: null },
   name: { type: String, default: '' },
   size: { type: [String, Number], default: 40 }
 });
 
+// --- Computed Properties ---
+
+/**
+ * Generates initials from the user's name.
+ * Takes the first letter of the first and last name, or first two letters if only one name.
+ * @returns {string} The generated initials.
+ */
 const initials = computed(() => {
   if (!props.name) return '??';
   const parts = props.name.split(' ');
@@ -16,6 +39,11 @@ const initials = computed(() => {
   return props.name.substring(0, 2).toUpperCase();
 });
 
+/**
+ * Computes the dynamic styles for the avatar container.
+ * Sets width, height, and scales font size relative to the avatar size.
+ * @returns {Object} Style object.
+ */
 const avatarStyle = computed(() => ({
   width: `${props.size}px`,
   height: `${props.size}px`,

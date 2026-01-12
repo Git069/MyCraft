@@ -4,12 +4,16 @@ Django settings for the MyCraft project.
 
 import os
 from pathlib import Path
+
 from django.core.exceptions import ImproperlyConfigured
 
+# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get("DJANGO_DEBUG", "False") == "True"
 
+# SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
 if not SECRET_KEY and not DEBUG:
     raise ImproperlyConfigured("DJANGO_SECRET_KEY must be set in production.")
@@ -22,7 +26,9 @@ if ALLOWED_HOSTS_ENV:
 else:
     ALLOWED_HOSTS = ["localhost", "127.0.0.1", "backend"]
 
+# Application definition
 INSTALLED_APPS = [
+    # Django apps
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -30,11 +36,15 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.gis",
-    "corsheaders", # Add corsheaders
+
+    # Third-party apps
+    "corsheaders",
     "rest_framework",
     "rest_framework.authtoken",
     "djoser",
     "django_filters",
+
+    # Local apps
     "users",
     "jobs",
     "chat",
@@ -44,7 +54,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
-    "corsheaders.middleware.CorsMiddleware", # Add CorsMiddleware here
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -71,6 +81,8 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
+# Database
+# https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 DATABASES = {
     'default': {
         'ENGINE': 'django.contrib.gis.db.backends.postgis',
@@ -82,6 +94,8 @@ DATABASES = {
     }
 }
 
+# Password validation
+# https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
@@ -89,18 +103,27 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
+# Internationalization
+# https://docs.djangoproject.com/en/5.2/topics/i18n/
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
 
+# Static files (CSS, JavaScript, Images)
+# https://docs.djangoproject.com/en/5.2/howto/static-files/
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+
+# Media files
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
+# Default primary key field type
+# https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# Django REST Framework settings
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework.authentication.TokenAuthentication',
@@ -113,6 +136,7 @@ REST_FRAMEWORK = {
     'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
 }
 
+# Djoser settings
 DJOSER = {
     'PERMISSIONS': {
         'user_create': ['rest_framework.permissions.AllowAny'],
@@ -137,12 +161,8 @@ DJOSER = {
     'TOKEN_MODEL': 'rest_framework.authtoken.models.Token',
 }
 
-# --- CORS SETTINGS ---
+# CORS settings
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
 ]
-# For more complex setups, you might need:
-# CORS_ALLOW_CREDENTIALS = True
-# CORS_ALLOW_METHODS = [...]
-# CORS_ALLOW_HEADERS = [...]

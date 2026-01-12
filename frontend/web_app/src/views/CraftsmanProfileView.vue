@@ -1,46 +1,80 @@
 <script setup>
-// --- Imports ---
-import { ref, onMounted, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import api from '@/api';
 import { useAuthStore } from '@/stores/auth';
 import StarRating from '@/components/StarRating.vue';
+import api from '@/api';
 
-// --- Setup ---
+/* ==========================================================================
+   State & Setup
+   ========================================================================== */
+
 const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
 
-// --- State ---
 const craftsman = ref(null);
 const loading = ref(true);
 const craftsmanId = route.params.id;
 
-// --- Computed Properties ---
+/* ==========================================================================
+   Computed Properties
+   ========================================================================== */
+
+/**
+ * Retrieves the currently logged-in user from the store.
+ * @returns {Object|null} The user object or null.
+ */
 const currentUser = computed(() => authStore.currentUser);
 
-const isOwnProfile = computed(() => {
-  return currentUser.value && currentUser.value.id === parseInt(craftsmanId, 10);
-});
+/**
+ * Checks if the profile being viewed belongs to the currently logged-in user.
+ * @returns {boolean} True if it is the user's own profile.
+ */
+const isOwnProfile = computed(() => currentUser.value && currentUser.value.id === parseInt(craftsmanId, 10));
 
+/**
+ * Extracts the year the craftsman joined the platform.
+ * @returns {number|string} The year of joining or an empty string if not available.
+ */
 const memberSince = computed(() => {
   if (!craftsman.value?.date_joined) return '';
   return new Date(craftsman.value.date_joined).getFullYear();
 });
 
-// --- Methods ---
+/* ==========================================================================
+   Lifecycle Hooks
+   ========================================================================== */
+
+/**
+ * Fetches the craftsman details when the component is mounted.
+ */
+onMounted(async () => {
+  try {
+    const response = await api.getUserDetails(craftsmanId);
+    craftsman.value = response.data;
+  } catch (error) {
+    console.error('Failed to fetch craftsman details:', error);
+  } finally {
+    loading.value = false;
+  }
+});
+
+/* ==========================================================================
+   Methods
+   ========================================================================== */
 
 /**
  * Constructs the full URL for an image path.
  * @param {string} url - The relative image URL.
- * @returns {string|null} The full URL or null.
+ * @returns {string|null} The full URL or null if url is missing.
  */
-const fullImageUrl = (url) => url ? `http://localhost:8000${url}` : null;
+const fullImageUrl = (url) => (url ? `http://localhost:8000${url}` : null);
 
 /**
  * Formats a date string into a localized month and year string.
  * @param {string} dateString - The date string to format.
- * @returns {string} Formatted date string.
+ * @returns {string} Formatted date string (e.g., "January 2023").
  */
 const formatReviewDate = (dateString) => {
   const date = new Date(dateString);
@@ -49,25 +83,13 @@ const formatReviewDate = (dateString) => {
 
 /**
  * Handles the contact button click.
- * Navigates to the inbox.
+ * Navigates to the inbox to start or continue a conversation.
  */
 const handleContactClick = () => {
   // This would ideally start a conversation about a generic topic,
   // for now, we just navigate to the inbox.
   router.push({ name: 'Inbox' });
 };
-
-// --- Lifecycle Hooks ---
-onMounted(async () => {
-  try {
-    const response = await api.getUserDetails(craftsmanId);
-    craftsman.value = response.data;
-  } catch (error) {
-    console.error("Failed to fetch craftsman details:", error);
-  } finally {
-    loading.value = false;
-  }
-});
 </script>
 
 <template>
@@ -149,6 +171,7 @@ onMounted(async () => {
   gap: 4rem;
   padding: 48px 0;
 }
+
 @media (min-width: 1024px) {
   grid-template-columns: 350px 1fr;
 }
@@ -157,18 +180,21 @@ onMounted(async () => {
 .identity-card-wrapper {
   position: relative;
 }
+
 .identity-card {
   position: sticky;
   top: 120px;
   align-self: start;
 }
+
 .card-content {
   border: 1px solid var(--color-border);
   border-radius: 12px;
   padding: 24px;
-  box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
   text-align: center;
 }
+
 .profile-avatar, .avatar-placeholder {
   width: 128px;
   height: 128px;
@@ -177,10 +203,12 @@ onMounted(async () => {
   object-fit: cover;
   background-color: #f1f1f1;
 }
+
 .identity-card h1 {
   font-size: 1.5rem;
   margin: 0;
 }
+
 .stats-row {
   display: flex;
   justify-content: center;
@@ -189,18 +217,30 @@ onMounted(async () => {
   margin-top: 8px;
   font-size: 0.9rem;
 }
-.stats-row .icon { font-size: 1.2rem; color: #ffc107; }
-.stats-row .value { font-weight: 700; }
-.stats-row .count { color: var(--color-text-light); }
+
+.stats-row .icon {
+  font-size: 1.2rem;
+  color: #ffc107;
+}
+
+.stats-row .value {
+  font-weight: 700;
+}
+
+.stats-row .count {
+  color: var(--color-text-light);
+}
 
 .divider {
   border-bottom: 1px solid var(--color-border);
   margin: 24px 0;
 }
+
 .verification-badge {
   font-weight: 600;
   margin-bottom: 24px;
 }
+
 .cta-wrapper button {
   width: 100%;
   padding: 12px;
@@ -215,39 +255,50 @@ onMounted(async () => {
   align-items: center;
   gap: 8px;
 }
+
 .bio {
   line-height: 1.7;
 }
+
 .member-since {
   color: var(--color-text-light);
   font-size: 0.9rem;
 }
+
 .reviews-section {
   margin-top: 48px;
 }
+
 .reviews-grid {
   display: grid;
   grid-template-columns: 1fr;
   gap: 32px;
 }
+
 @media (min-width: 768px) {
-  .reviews-grid { grid-template-columns: 1fr 1fr; }
+  .reviews-grid {
+    grid-template-columns: 1fr 1fr;
+  }
 }
+
 .review-card {
   display: flex;
   flex-direction: column;
 }
+
 .review-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: 12px;
 }
+
 .reviewer-info {
   display: flex;
   align-items: center;
   gap: 12px;
 }
+
 .reviewer-avatar, .avatar-placeholder.small {
   width: 48px;
   height: 48px;
@@ -255,12 +306,21 @@ onMounted(async () => {
   object-fit: cover;
   background-color: #f1f1f1;
 }
-.reviewer-name { font-weight: 600; }
-.review-date { font-size: 0.85rem; color: #717171; }
+
+.reviewer-name {
+  font-weight: 600;
+}
+
+.review-date {
+  font-size: 0.85rem;
+  color: #717171;
+}
+
 .review-comment {
   line-height: 1.6;
   margin-bottom: 8px;
 }
+
 .review-job-context {
   font-size: 0.8rem;
   color: #717171;

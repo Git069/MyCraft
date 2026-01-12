@@ -5,6 +5,7 @@ from rest_framework.response import Response
 
 from config.ai_utils import get_ai_response
 from jobs.models import Booking, Job
+
 from .models import Conversation, Message, Offer
 from .serializers import (
     ConversationDetailSerializer,
@@ -24,8 +25,8 @@ class ConversationViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """
-        Returns the list of conversations for the authenticated user,
-        including related messages and participant profiles.
+        Returns the list of conversations for the authenticated user.
+        Includes related messages and participant profiles to optimize database queries.
         """
         return self.request.user.conversations.prefetch_related(
             'messages', 'participants__profile'
@@ -44,7 +45,8 @@ class ConversationViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         """
         Creates a new conversation for a specific job.
-        If a conversation already exists, it returns the existing one.
+        If a conversation already exists between the user and the job's contractor,
+        it returns the existing one.
         """
         job_id = request.data.get('job_id')
         initial_message = request.data.get('message')
@@ -63,6 +65,7 @@ class ConversationViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
 
+        # Check if a conversation already exists for this job and user
         conversation = Conversation.objects.filter(
             job=job, participants=request.user
         ).first()
@@ -108,7 +111,6 @@ class ConversationViewSet(viewsets.ModelViewSet):
     def suggest_reply(self, request):
         """
         Generates a suggested reply using AI.
-        Expected body: { 'last_message': '...' }
         """
         last_message = request.data.get('last_message', '')
 
@@ -190,7 +192,7 @@ class OfferViewSet(viewsets.ViewSet):
         if user not in offer.conversation.participants.all():
             raise PermissionDenied("You are not a participant in this conversation.")
 
-        offer.status = 'ACCEPTED'
+        offer.status = Offer.Status.ACCEPTED
         offer.save()
 
         service = offer.conversation.job
@@ -223,6 +225,6 @@ class OfferViewSet(viewsets.ViewSet):
         if user not in offer.conversation.participants.all():
             raise PermissionDenied("You are not a participant in this conversation.")
 
-        offer.status = 'REJECTED'
+        offer.status = Offer.Status.REJECTED
         offer.save()
         return Response(OfferSerializer(offer).data, status=status.HTTP_200_OK)

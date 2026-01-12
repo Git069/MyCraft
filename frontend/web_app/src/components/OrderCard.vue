@@ -1,18 +1,44 @@
 <script setup>
+/**
+ * OrderCard.vue
+ *
+ * A card component representing an order (booking) from the contractor's perspective.
+ * Displays order details, customer info, and provides actions to manage the order.
+ */
+
+// --- Imports ---
 import { computed } from 'vue';
 import { STATUS_TRANSLATIONS } from '@/constants';
 
+// --- Props & Emits ---
+
+/**
+ * Props definition.
+ * @property {Object} booking - The booking object containing order details.
+ */
 const props = defineProps({
   booking: { type: Object, required: true }
 });
 
+/**
+ * Emits definition.
+ * @emits mark-completed - Emitted when the contractor marks the order as completed.
+ * @emits cancel - Emitted when the contractor cancels the order.
+ */
 const emit = defineEmits(['mark-completed', 'cancel']);
 
-// --- Formatierung ---
+// --- Computed Properties ---
+
+/**
+ * Formats the price as currency (EUR).
+ */
 const formattedPrice = computed(() => {
   return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(props.booking.price || 0);
 });
 
+/**
+ * Formats the scheduled date.
+ */
 const formattedDate = computed(() => {
   if (!props.booking.scheduled_date) return 'Termin noch nicht festgelegt';
   return new Date(props.booking.scheduled_date).toLocaleDateString('de-DE', {
@@ -20,6 +46,10 @@ const formattedDate = computed(() => {
   });
 });
 
+/**
+ * Formats the location display string.
+ * Prioritizes full address, falls back to zip/city, or 'Ort unbekannt'.
+ */
 const locationDisplay = computed(() => {
   const s = props.booking.service;
   if (!s) return 'Keine Ortsangabe';
@@ -27,6 +57,9 @@ const locationDisplay = computed(() => {
   return `${s.zip_code || ''} ${s.city || ''}`.trim() || 'Ort unbekannt';
 });
 
+/**
+ * Translates the booking status code to a human-readable string.
+ */
 const translatedStatus = computed(() => {
   const status = props.booking.status;
   return STATUS_TRANSLATIONS[status] || status;
@@ -97,7 +130,7 @@ const translatedStatus = computed(() => {
 </template>
 
 <style scoped>
-/* --- KARTEN BASIS --- */
+/* --- CARD BASE --- */
 .order-card {
   background-color: white;
   border: 1px solid var(--color-border);
@@ -105,7 +138,7 @@ const translatedStatus = computed(() => {
   box-shadow: 0 2px 5px rgba(0,0,0,0.05);
   display: flex;
   flex-direction: column;
-  height: 100%; /* Wichtig für Grid-Zellen */
+  height: 100%; /* Important for grid cells */
   overflow: hidden;
   transition: transform 0.2s, box-shadow 0.2s;
 }
@@ -128,7 +161,7 @@ const translatedStatus = computed(() => {
 
 .header-content {
   flex: 1;
-  min-width: 0; /* Verhindert Flexbox-Overflow bei langen Titeln */
+  min-width: 0; /* Prevents flexbox overflow with long titles */
 }
 
 .job-title {
@@ -137,11 +170,11 @@ const translatedStatus = computed(() => {
   font-weight: 700;
   color: var(--color-text);
 
-  /* STABILITÄT: Reserviert exakt Platz für 2 Zeilen */
+  /* STABILITY: Reserves exact space for 2 lines */
   line-height: 1.3;
   height: 2.6em; /* 1.3 * 2 = 2.6em */
 
-  /* Text abschneiden (...) */
+  /* Text truncation (...) */
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -164,7 +197,7 @@ const translatedStatus = computed(() => {
   padding: 16px;
   display: flex;
   flex-direction: column;
-  flex-grow: 1; /* Drückt den Footer nach unten */
+  flex-grow: 1; /* Pushes footer down */
   gap: 16px;
 }
 
@@ -195,7 +228,7 @@ const translatedStatus = computed(() => {
   font-weight: 500;
 }
 
-/* STABILITÄT: Kunde immer 1 Zeile */
+/* STABILITY: Customer always 1 line */
 .customer-box {
   line-height: 1.4;
   height: 1.4em;
@@ -204,7 +237,7 @@ const translatedStatus = computed(() => {
   text-overflow: ellipsis;
 }
 
-/* STABILITÄT: Adresse immer 2 Zeilen */
+/* STABILITY: Address always 2 lines */
 .address-box {
   line-height: 1.3;
   height: 2.6em; /* 1.3 * 2 = 2.6em */
@@ -215,7 +248,7 @@ const translatedStatus = computed(() => {
 }
 
 .info-block.full-width {
-  margin-top: auto; /* Schiebt Terminblock nach unten, falls oben Platz wäre */
+  margin-top: auto; /* Pushes date block down if there is space above */
   padding-top: 12px;
   border-top: 1px solid #eee;
 }
@@ -228,9 +261,9 @@ const translatedStatus = computed(() => {
 
 /* --- FOOTER --- */
 .card-footer-wrapper {
-  margin-top: auto; /* Drückt Footer an den Boden */
+  margin-top: auto; /* Pushes footer to bottom */
   border-top: 1px solid var(--color-border);
-  min-height: 62px; /* Fixe Mindesthöhe für Einheitlichkeit */
+  min-height: 62px; /* Fixed min-height for consistency */
   display: flex;
   flex-direction: column;
   justify-content: center;

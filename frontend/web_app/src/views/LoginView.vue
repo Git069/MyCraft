@@ -1,26 +1,44 @@
 <script setup>
-// --- Imports ---
 import { ref, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { useToastStore } from '@/stores/toast';
 
-// --- Setup ---
+/* ==========================================================================
+   State & Setup
+   ========================================================================== */
+
 const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
 const toastStore = useToastStore();
 
-// --- State ---
 const email = ref('');
 const password = ref('');
 const isLoading = ref(false);
 
-// --- Methods ---
+/* ==========================================================================
+   Lifecycle Hooks
+   ========================================================================== */
+
+/**
+ * Checks for registration success query parameter on mount.
+ * Displays a success toast if the user just registered.
+ */
+onMounted(() => {
+  if (route.query.registered === 'true') {
+    toastStore.addToast('Registrierung erfolgreich! Bitte melde dich an.', 'success');
+  }
+});
+
+/* ==========================================================================
+   Methods
+   ========================================================================== */
 
 /**
  * Handles the login process.
- * Calls the auth store to login and redirects to the dashboard on success.
+ * Calls the auth store to login and redirects to the home page on success.
+ * Displays an error toast on failure.
  */
 const handleLogin = async () => {
   isLoading.value = true;
@@ -38,13 +56,6 @@ const handleLogin = async () => {
     isLoading.value = false;
   }
 };
-
-// --- Lifecycle Hooks ---
-onMounted(() => {
-  if (route.query.registered === 'true') {
-    toastStore.addToast('Registrierung erfolgreich! Bitte melde dich an.', 'success');
-  }
-});
 </script>
 
 <template>
@@ -99,6 +110,7 @@ onMounted(() => {
   min-height: 80vh;
   padding: var(--spacing-lg);
 }
+
 .login-form-wrapper {
   width: 100%;
   max-width: 450px;
@@ -107,28 +119,34 @@ onMounted(() => {
   border-radius: var(--border-radius);
   box-shadow: var(--box-shadow);
 }
+
 .form-header {
   margin-bottom: var(--spacing-lg);
 }
+
 .login-form {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-md);
 }
+
 .login-button {
   width: 100%;
   margin-top: var(--spacing-sm);
 }
+
 .form-footer {
   margin-top: var(--spacing-xl);
   text-align: center;
   font-size: var(--font-size-sm);
 }
+
 .forgot-password-link {
   display: block;
   margin-bottom: var(--spacing-md);
   color: var(--color-text-light);
 }
+
 .register-link {
   font-weight: 600;
   color: var(--color-primary);
