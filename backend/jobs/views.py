@@ -4,9 +4,10 @@ from django.contrib.gis.measure import D
 from django.db.models import Q
 from django.utils import timezone
 from datetime import timedelta
-from rest_framework import viewsets, permissions
+from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.pagination import PageNumberPagination
 
 from geopy.geocoders import Nominatim
 
@@ -15,6 +16,11 @@ from .models import Job, Booking
 from .permissions import IsOwnerOrReadOnly
 from .serializers import JobSerializer, BookingSerializer
 
+
+class JobPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = 'page_size'
+    max_page_size = 1000
 
 
 class JobViewSet(viewsets.ModelViewSet):
@@ -25,6 +31,7 @@ class JobViewSet(viewsets.ModelViewSet):
     queryset = Job.objects.all().filter(status=Job.Status.OPEN).select_related('contractor__profile')
     serializer_class = JobSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
+    pagination_class = JobPagination
 
     def get_queryset(self):
         """
@@ -266,46 +273,33 @@ class BookingViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def cancel(self, request, pk=None):
-        """
-        Cancels a booking. Allowed for both customer and contractor.
-        """
-        booking = self.get_object()
-        if request.user != booking.customer and request.user != booking.contractor:
-            return Response({'detail': 'Not authorized.'}, status=403)
-        booking.status = Booking.Status.CANCELLED
-        booking.save()
-        return Response(self.get_serializer(booking).data)
-
-    @action(detail=True, methods=['post'])
-    def cancel(self, request, pk=None):
         booking = self.get_object()
         user = request.user
 
-        # Prüfung: Ist der User berechtigt?
+        # Check authorization
         if user != booking.contractor and user != booking.customer:
             return Response(
                 {'detail': 'Du bist nicht berechtigt, diese Buchung zu stornieren.'},
                 status=status.HTTP_403_FORBIDDEN
             )
 
-        # Logik für KUNDEN: 7-Tage-Frist prüfen
+        # Logic for CUSTOMERS: 7-day rule
         if user == booking.customer:
-            # Wir nehmen an, booking.date ist ein Date-Objekt.
-            # Falls booking.date ein DateTime ist, nutze booking.date.date()
-            today = timezone.now().date()
-            days_until_job = (booking.date - today).days
+            if booking.scheduled_date:
+                today = timezone.now().date()
+                days_until_job = (booking.scheduled_date - today).days
 
-            if days_until_job < 7:
-                return Response(
-                    {'detail': 'Stornierung für Kunden nur bis zu 7 Tage vor dem Termin möglich.'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+                if days_until_job < 7:
+                    return Response(
+                        {'detail': 'Stornierung für Kunden nur bis zu 7 Tage vor dem Termin möglich.'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
 
-        # Status ändern
-        if booking.status == 'CANCELLED':
+        # Check if already cancelled
+        if booking.status == Booking.Status.CANCELLED:
             return Response({'detail': 'Buchung ist bereits storniert.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        booking.status = 'CANCELLED'
+        booking.status = Booking.Status.CANCELLED
         booking.save()
 
-        return Response({'status': 'cancelled', 'updated_status': booking.status})
+        return Response(self.get_serializer(booking).data)

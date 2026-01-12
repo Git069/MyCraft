@@ -18,6 +18,20 @@ const isContractor = computed(() => {
   return authStore.user && authStore.user.id === props.booking.contractor;
 });
 
+const isCancellable = computed(() => {
+  if (props.booking.status !== 'CONFIRMED') return false;
+  if (isContractor.value) return true; // Contractors can always cancel (or logic to be defined)
+
+  // Customer logic: > 7 days in future
+  if (!props.booking.scheduled_date) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const scheduledDate = new Date(props.booking.scheduled_date);
+  const diffTime = scheduledDate - today;
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return diffDays >= 7;
+});
+
 const isMenuOpen = ref(false);
 
 const goToDetail = () => router.push({ name: 'JobDetail', params: { id: props.booking.service.id } });
@@ -74,8 +88,9 @@ const translatedStatus = computed(() => {
         <button class="action-btn complete" @click="$emit('mark-completed', booking.id)">Als erledigt markieren</button>
       </div>
 
-      <div v-else-if="booking.status === 'CONFIRMED' && !isContractor" class="action-group disabled">
-        <span>Wartet auf Ausführung</span>
+      <div v-else-if="booking.status === 'CONFIRMED' && !isContractor" class="action-group">
+        <button v-if="isCancellable" class="action-btn cancel" @click="$emit('cancel', booking.id)">Stornieren</button>
+        <span v-else class="disabled-text">Wartet auf Ausführung</span>
       </div>
 
       <div v-else-if="booking.status === 'COMPLETED'">
@@ -110,11 +125,14 @@ const translatedStatus = computed(() => {
 .title { font-weight: 600; color: var(--color-text); font-size: 1rem; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .price { font-weight: 400; }
 .card-footer-actions { padding: 12px; border-top: 1px solid var(--color-border); background-color: #fcfcfc; }
-.action-group { display: flex; gap: 8px; }
+.action-group { display: flex; gap: 8px; width: 100%; justify-content: center; }
 .action-btn { flex: 1; padding: 8px 12px; border-radius: 8px; font-size: 0.9rem; font-weight: 600; cursor: pointer; border: 1px solid transparent; transition: all 0.2s; }
 .action-btn.complete { background-color: var(--color-success); color: white; width: 100%; }
 .action-btn.complete:hover { background-color: #218838; }
 .action-btn.review { width: 100%; background-color: var(--color-secondary); color: white; }
+.action-btn.cancel { background-color: transparent; color: var(--color-error); border: 1px solid var(--color-error); }
+.action-btn.cancel:hover { background-color: var(--color-error); color: white; }
 .review-display { padding: 8px; text-align: center; color: var(--color-text-light); font-size: 0.9rem; }
 .action-group.disabled { justify-content: center; color: var(--color-text-light); font-size: 0.85rem; font-style: italic; }
+.disabled-text { color: var(--color-text-light); font-size: 0.85rem; font-style: italic; }
 </style>

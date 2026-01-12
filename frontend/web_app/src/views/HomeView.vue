@@ -14,7 +14,7 @@ const toastStore = useToastStore();
 const recentServices = ref([]);
 const loading = ref(true);
 const isLocating = ref(false);
-const defaultParams = { page_size: 8 };
+const defaultParams = { page_size: 100 };
 
 // --- Methods ---
 
