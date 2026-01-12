@@ -41,7 +41,7 @@ Das Projekt ist vollständig dockerisiert. Befolgen Sie diese Schritte, um die E
 
 ### 2. Repository klonen
 ```bash
-git clone [URL_DEINES_REPOS]
+git clone https://github.com/Git069/MyCraft.git
 cd MyCraft
 
 ```
