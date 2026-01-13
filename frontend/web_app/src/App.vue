@@ -206,9 +206,10 @@ header, nav, .navbar {
 .logo-link {
   display: flex;
   align-items: center;
+  height: 100%;
 }
 .logo-image {
-  height: 32px;
+  height: 100%;
   width: auto;
 }
 .nav-right {
